@@ -41,7 +41,6 @@ public class DiscRackBlock extends HorizontalDirectionalBlock implements EntityB
         if (!state.is(newState.getBlock())) {
             BlockEntity blockEntity = level.getBlockEntity(pos);
             if (blockEntity instanceof DiscRackBlockEntity rack) {
-                // This helper drops everything in the inventory at the block's location
                 Containers.dropContents(level, pos, rack);
                 level.updateNeighbourForOutputSignal(pos, this);
             }

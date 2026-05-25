@@ -116,8 +116,10 @@ public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implem
     }
 
     @Override
-    public CompoundTag getUpdateTag(HolderLookup.Provider provider) {
-        return this.saveWithFullMetadata(provider);
+    public CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
+        this.saveAdditional(tag, registries);
+        return tag;
     }
 
     @Override
