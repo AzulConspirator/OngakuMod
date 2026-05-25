@@ -1,0 +1,8 @@
+{
+  "variants": {
+    "facing=north": { "model": "ongakumod:block/disc_rack" },
+    "facing=south": { "model": "ongakumod:block/disc_rack", "y": 180 },
+    "facing=east": { "model": "ongakumod:block/disc_rack", "y": 90 },
+    "facing=west": { "model": "ongakumod:block/disc_rack", "y": 270 }
+  }
+}
