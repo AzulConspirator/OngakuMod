@@ -1,6 +1,7 @@
 package com.azulc.ongakumod;
 
 import com.azulc.ongakumod.client.DiscRackRenderer;
+import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.client.screen.DiscRackScreen;
 
 import net.minecraft.client.resources.model.ModelResourceLocation;
@@ -21,6 +22,7 @@ public class OngakuModClient {
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(OngakuMod.DISC_MENU.get(), DiscRackScreen::new);
+        event.register(OngakuMod.AUTOPLAY_MENU.get(), AutoplayScreen::new);
     }
 
     @SubscribeEvent

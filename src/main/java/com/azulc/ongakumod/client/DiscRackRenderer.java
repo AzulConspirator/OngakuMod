@@ -38,7 +38,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
         ms.pushPose(); 
         ms.translate(0.5, 0.5, 0.5);
         ms.mulPose(Axis.YP.rotationDegrees(-dir.toYRot()));
-        double startZ = -0.445;
+        double startZ = -0.47;
         double spacing = 0.125;
         double yOffset = -0.44;
 

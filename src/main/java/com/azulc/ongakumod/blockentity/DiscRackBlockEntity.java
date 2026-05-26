@@ -10,13 +10,13 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.WorldlyContainer;
 import net.minecraft.world.level.block.entity.RandomizableContainerBlockEntity;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.stream.IntStream;
 
 import com.azulc.ongakumod.OngakuMod;
@@ -116,15 +116,28 @@ public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implem
     }
 
     @Override
-    public CompoundTag getUpdateTag(net.minecraft.core.HolderLookup.Provider registries) {
-        CompoundTag tag = super.getUpdateTag(registries);
-        this.saveAdditional(tag, registries);
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = new CompoundTag();
+        saveAdditional(tag, registries);
         return tag;
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getUpdatePacket() {
+    public ClientboundBlockEntityDataPacket getUpdatePacket() {
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
+    @Override
+    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
+        loadAdditional(tag, registries);
+    }
+
+    public List<ItemStack> getContents() {
+        List<ItemStack> list = new ArrayList<>();
+        for (int i = 0; i < this.getContainerSize(); i++) {
+            ItemStack s = this.getItem(i);
+            if (!s.isEmpty()) list.add(s.copy()); // Always copy when sending over network!
+        }
+        return list;
+    }
 }

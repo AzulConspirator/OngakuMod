@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "ongakumod:block/autoplay_controller" }
+  }
+}
