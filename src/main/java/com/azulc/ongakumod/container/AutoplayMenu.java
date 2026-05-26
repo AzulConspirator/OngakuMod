@@ -26,13 +26,11 @@ public class AutoplayMenu extends AbstractContainerMenu {
     }
 
     // Server-side constructor (Used by the Block)
-    public AutoplayMenu(int containerId, Inventory inv, AutoplayControllerBlockEntity entity, 
-                        ContainerData data, List<ItemStack> initialDiscs) {
+    public AutoplayMenu(int containerId, Inventory inv, AutoplayControllerBlockEntity entity, ContainerData data, List<ItemStack> initialDiscs) {
         super(OngakuMod.AUTOPLAY_MENU.get(), containerId);
         this.blockEntity = entity;
         this._data = data;
         this.syncedDiscs = initialDiscs; // Now properly passed in
-        
         addDataSlots(_data); 
     }
 

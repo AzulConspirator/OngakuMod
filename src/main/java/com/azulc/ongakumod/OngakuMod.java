@@ -11,9 +11,11 @@ import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.azulc.ongakumod.container.AutoplayMenu;
 import com.azulc.ongakumod.container.DiscContainer;
 import com.azulc.ongakumod.item.TuningWrenchItem;
+import com.azulc.ongakumod.network.ClientPayloadHandler;
 import com.azulc.ongakumod.network.PlayDiscPayload;
 import com.azulc.ongakumod.network.ServerPayloadHandler;
 import com.azulc.ongakumod.network.StopDiscPayload;
+import com.azulc.ongakumod.network.SyncPlaylistPayload;
 import com.azulc.ongakumod.util.DiscColorCache;
 import com.mojang.logging.LogUtils;
 
@@ -128,6 +130,11 @@ public class OngakuMod
             StopDiscPayload.TYPE, 
             StopDiscPayload.STREAM_CODEC, 
             ServerPayloadHandler::handleStopDisc
+        );
+        registrar.playToClient(
+            SyncPlaylistPayload.TYPE,
+            SyncPlaylistPayload.STREAM_CODEC,
+            ClientPayloadHandler::handleSyncPlaylist
         );
     }
 }

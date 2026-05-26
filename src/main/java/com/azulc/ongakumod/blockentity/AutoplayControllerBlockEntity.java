@@ -3,10 +3,13 @@ package com.azulc.ongakumod.blockentity;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
@@ -14,7 +17,11 @@ import net.minecraft.world.level.block.JukeboxBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import com.azulc.ongakumod.OngakuMod;
+import com.azulc.ongakumod.network.SyncPlaylistPayload;
 
 public class AutoplayControllerBlockEntity extends BlockEntity {
     
@@ -32,7 +39,14 @@ public class AutoplayControllerBlockEntity extends BlockEntity {
             return switch (index) {
                 case 0 -> linkedRackPos != null ? 1 : 0;
                 case 1 -> currentPlayingSlot;
-                case 2 -> isJukeboxAdjacent() ? 1 : 0;
+                case 2 -> {
+                    BlockPos jukePos = findJukebox();
+                    if (jukePos == null) yield -1; // No Jukebox
+                    if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
+                        yield jukebox.getTheItem().isEmpty() ? 0 : 1; // 0 = Connected/Empty, 1 = Connected/Playing
+                    }
+                    yield -1;
+                }
                 default -> 0;
             };
         }
@@ -40,6 +54,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity {
         @Override
         public void set(int index, int value) {
             if (index == 1) currentPlayingSlot = value;
+            // Index 2 and 0 are read-only dynamic values calculated by the server logic
         }
 
         @Override
@@ -47,7 +62,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity {
             return 3;
         }
     };
-    
+        
     
 
     // Called by the Block's use() method
@@ -135,6 +150,21 @@ public class AutoplayControllerBlockEntity extends BlockEntity {
             return rack;
         }
         return null;
+    }
+    
+    // Add this inside AutoplayControllerBlockEntity
+    public void broadcastPlaylistUpdate() {
+        if (level == null || level.isClientSide) return;
+        DiscRackBlockEntity rack = getRack(level);
+        if (rack == null) return;
+        
+        List<ItemStack> currentDiscs = new ArrayList<>();
+        for (int i = 0; i < rack.getContainerSize(); i++) {
+            currentDiscs.add(rack.getItem(i).copy());
+        }
+        
+        // Broadcast to anyone looking at this chunk
+        PacketDistributor.sendToPlayersTrackingChunk((ServerLevel) level, new ChunkPos(worldPosition), new SyncPlaylistPayload(currentDiscs));
     }
 
     public boolean isJukeboxAdjacent() {

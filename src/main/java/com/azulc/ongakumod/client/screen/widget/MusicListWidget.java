@@ -7,8 +7,12 @@ import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ObjectSelectionList;
+import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.TooltipFlag;
 
 public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEntry> {
     private final AutoplayScreen screen;
@@ -35,24 +39,47 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         return this.getSelected() != null && this.getSelected().index == index;
     }
 
-    // This is the individual row in your scroll list
-    public class MusicEntry extends ObjectSelectionList.Entry<MusicEntry> {
+    public static List<Component> getDiscDescription(ItemStack stack, ClientLevel level,LocalPlayer player,TooltipFlag Tooltip) 
+    {
+        return stack.getTooltipLines(Item.TooltipContext.of(level),  player,Tooltip) ;
+    }
+    
+    public class MusicEntry extends ObjectSelectionList.Entry<MusicEntry> 
+    {
         public final ItemStack disc;
         public final int index;
 
-        public MusicEntry(ItemStack disc, int index) {
-            this.disc = disc;
-            this.index = index;
+        public MusicEntry(ItemStack _disc, int _index) {
+            this.disc = _disc;
+            this.index = _index;
         }
 
         @Override
         public void render(GuiGraphics graphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean isHovered, float partialTick) {
+            
             graphics.renderFakeItem(disc, x + 2, y + 1);
-            graphics.drawString(Minecraft.getInstance().font, disc.getHoverName(), x + 22, y + 5, 0xFFFFFF, false);
+            List<Component> tooltip = getDiscDescription(disc,Minecraft.getInstance().level,Minecraft.getInstance().player,TooltipFlag.Default.NORMAL);
+            // Logic: If there is a second line (the song info), use it. 
+            // Otherwise, fallback to the item name.
+            if (tooltip.size() >= 2) {
+                String fullText = tooltip.get(1).getString();
+                String[] parts = fullText.split(" - ");
+                
+                if (parts.length == 2) {
+                    graphics.drawString(Minecraft.getInstance().font, parts[1], x + 24, y + 1, 0xFFFFFFFF, false); // Title
+                    graphics.drawString(Minecraft.getInstance().font, parts[0], x + 24, y + 11, 0xFFAAAAAA, false); // Author
+                } else {
+                    graphics.drawString(Minecraft.getInstance().font, fullText, x + 24, y + 5, 0xFFFFFFFF, false);
+                }
+            } else {
+                graphics.drawString(Minecraft.getInstance().font, disc.getHoverName(), x + 24, y + 5, 0xFFFFFFFF, false);
+            }
         }
 
         @Override
-        public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        public boolean mouseClicked(double mouseX, double mouseY, int button) 
+        {
+            MusicListWidget.this.setSelected(this);
             screen.setSelectedDisc(this.index);
             return true;
         }
@@ -62,4 +89,6 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             return disc.getHoverName();
         }
     }
+
+
 }
