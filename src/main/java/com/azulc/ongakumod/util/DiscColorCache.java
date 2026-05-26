@@ -27,9 +27,7 @@ public class DiscColorCache
     public static void update(ResourceManager manager) 
     {
         CACHE.clear();
-        var playableDiscs = BuiltInRegistries.ITEM.stream()
-                .filter(item -> item.getDefaultInstance().has(DataComponents.JUKEBOX_PLAYABLE))
-                .toList();
+        var playableDiscs = BuiltInRegistries.ITEM.stream().filter(item -> item.getDefaultInstance().has(DataComponents.JUKEBOX_PLAYABLE)).toList();
 
         for (Item item : playableDiscs) 
         {
@@ -47,8 +45,7 @@ public class DiscColorCache
                     int rawOutline  = sampleFromGrid(image, 9, 11); //9x11
                     CACHE.put(item, new DiscColors(formatColor(rawVinyl), formatColor(rawLabel), formatColor(rawOutline)));
                     
-                    OngakuMod.LOGGER.info("SUCCESS: Sampled {} - Vinyl: {}, Label: {}, Outline: {}", 
-                        location, Integer.toHexString(rawVinyl), Integer.toHexString(rawLabel),Integer.toHexString(rawOutline));
+                    OngakuMod.LOGGER.info("SUCCESS: Sampled {} - Vinyl: {}, Label: {}, Outline: {}", location, Integer.toHexString(rawVinyl), Integer.toHexString(rawLabel),Integer.toHexString(rawOutline));
                 } 
                 catch (Exception e) 
                 {
@@ -88,13 +85,11 @@ public class DiscColorCache
         int g = (abgr >> 8) & 0xFF;
         int r = abgr & 0xFF;
         
-        // We want 0xAARRGGBB for the VertexConsumer
         return (a << 24) | (r << 16) | (g << 8) | b;
     }
 
     public static DiscColors getColors(Item item) 
     {
-        // Fallback to a standard black vinyl with a white label if not found
         return CACHE.getOrDefault(item, new DiscColors(0xFF222222, 0xFFFFFFFF,0xFF222222));
     }
 }

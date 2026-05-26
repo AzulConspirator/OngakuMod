@@ -30,14 +30,15 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
     }
 
     @Override
-    public void render(DiscRackBlockEntity rack, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light, int overlay) {
+    public void render(DiscRackBlockEntity rack, float partialTicks, PoseStack ms, MultiBufferSource buffer, int light, int overlay) 
+    {
         Direction dir = rack.getBlockState().getValue(BlockStateProperties.HORIZONTAL_FACING);
         BakedModel model = blockRenderer.getBlockModelShaper().getModelManager().getModel(OngakuModClient.VinylModel);
 
         ms.pushPose(); 
         ms.translate(0.5, 0.5, 0.5);
         ms.mulPose(Axis.YP.rotationDegrees(-dir.toYRot()));
-        double startZ = -0.48;
+        double startZ = -0.445;
         double spacing = 0.125;
         double yOffset = -0.44;
 

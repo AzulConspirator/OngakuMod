@@ -76,12 +76,12 @@ public class DiscRackBlock extends HorizontalDirectionalBlock implements EntityB
 
     @Override
     protected RenderShape getRenderShape(BlockState state) {
-        return RenderShape.MODEL; // Tells Minecraft to render the JSON model
+        return RenderShape.MODEL;
     }
 
     @Override
     protected boolean propagatesSkylightDown(BlockState state, BlockGetter reader, BlockPos pos) {
-        return true; // Prevents weird dark shadows inside your rack
+        return true;
     }
 
     @Nullable
@@ -99,7 +99,7 @@ public class DiscRackBlock extends HorizontalDirectionalBlock implements EntityB
     protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
         return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
     }
-    // get comparator redstone output
+    
     @Override
     protected boolean hasAnalogOutputSignal(BlockState blockState) {
         return true;
