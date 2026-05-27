@@ -6,6 +6,10 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
+import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.ItemStack;
@@ -45,13 +49,36 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     //#region Container Data
     public final ContainerData data = new ContainerData() 
     {
+        
         @Override
         public int get(int index) 
         {
+            
             return switch (index) 
             {
                 case 0 -> linkedRackPositions.isEmpty() ? 0 : 1;
-                case 1 -> currentPlaylistIndex;
+                case 1 ->
+                    {
+                        BlockPos jukePos = findJukebox();
+                        if (jukePos == null) yield -1;
+                        if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) 
+                        {
+                            ItemStack playing = jukebox.getTheItem();
+                            if (playing.isEmpty()) {yield -1;}
+                            // Match the disc in the jukebox back to our list to find the visual index
+                            List<DisplayPlaylistEntry> displayList = buildCollapsedPlaylist();
+                            for (int i = 0; i < displayList.size(); i++) {
+                                // Compare the item types
+                                if (ItemStack.isSameItem(displayList.get(i).stack(), playing)) 
+                                {
+                                    yield i;
+                                }
+                            }
+                            yield -1;
+                            //return findIndexForStack(playing);
+                        }
+                        yield -1;
+                    }
                 case 2 -> 
                         {
                             BlockPos jukePos = findJukebox();
@@ -79,15 +106,36 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     };
     //#endregion
     //#region Linked Rack Handler
-    public boolean addLinkedRack(BlockPos pos) 
-    {
-        if (this.linkedRackPositions.contains(pos))
-        {
-            return false;
+/*     public boolean addLinkedRack(BlockPos pos) {
+    if (this.linkedRackPositions.contains(pos)) return false;
+    this.linkedRackPositions.add(pos);
+    
+        this.setChanged(); // Marks for saving to disk
+        if (level != null && !level.isClientSide) {
+            // Tells the level to sync this block entity to all players watching it
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
         }
-        this.linkedRackPositions.add(pos);
-        this.setChanged();
         return true;
+    } */
+
+    public boolean addLinkedRack(BlockPos rackPos) 
+    {
+        if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) 
+        {
+            BlockPos existingController = rack.getControllerPos();
+            if (existingController != null && !existingController.equals(worldPosition)) {
+                // Optional: Tell the old controller to remove this rack
+                if (level.getBlockEntity(existingController) instanceof AutoplayControllerBlockEntity oldController) {
+                    oldController.removeLinkedRack(rackPos);
+                }
+            }
+            rack.setControllerPos(worldPosition);
+            this.linkedRackPositions.add(rackPos);
+            this.setChanged();
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            return true;
+        }
+        return false;
     }
 
     public void removeLinkedRack(BlockPos pos) {
@@ -98,6 +146,30 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     public void clearLinkedRacks() {
         this.linkedRackPositions.clear();
         this.setChanged();
+    }
+    //#endregion
+    //#region Update Tag
+    // 1. Send the data to the client when the chunk loads
+    @Override
+    public CompoundTag getUpdateTag(HolderLookup.Provider registries) {
+        CompoundTag tag = super.getUpdateTag(registries);
+        saveAdditional(tag, registries); 
+        return tag;
+    }
+
+    // 2. Create the packet that carries the data
+    @Override
+    public Packet<ClientGamePacketListener> getUpdatePacket() {
+        return ClientboundBlockEntityDataPacket.create(this);
+    }
+
+    // 3. (Optional but safer) Explicitly handle the packet on the client
+    @Override
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
+        CompoundTag tag = pkt.getTag();
+        if (tag != null) {
+            loadAdditional(tag, registries);
+        }
     }
     //#endregion
     //#region Server Tick
@@ -111,11 +183,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
 
     private void validateAndProcess(Level level,BlockPos pos) 
     {
-        //if (this.linkedRackPos == null) return; // Not linked yet
         if (this.linkedRackPositions.isEmpty()) return;
-        // 2. Is it actually a Disc Rack?
         Iterator<BlockPos> iterator = this.linkedRackPositions.iterator();
-
         while (iterator.hasNext()) {
             BlockPos rackPos = iterator.next();
 
@@ -131,24 +200,12 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             }
         }
 
-        BlockPos jukeboxPos = null;
-        // Find adjacent jukebox
-        for (Direction dir : Direction.values()) 
-        {
-            if (level.getBlockState(pos.relative(dir)).is(Blocks.JUKEBOX)) 
-            {
-                jukeboxPos = pos.relative(dir);
-                break;
-            }
-        }
+        BlockPos jukeboxPos = findJukebox();
 
         if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) 
         {
             ItemStack playing = jukebox.getTheItem();
             this.data.set(2, playing.isEmpty() ? 0 : 1);// 0 = Empty, 1 = Has Disc
-            
-            // BONUS: If you want the actual name, we'd need a custom packet.
-            // For now, let's just stick to the OK/Empty status.
         } 
         else 
         {
@@ -156,7 +213,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
     }
     //#endregion
-    //#region NBT SAVING & LOADING
+    //#region NBT Data Storage
     @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
@@ -341,42 +398,37 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     }
     //#endregion
     //#region playlist Handler
-    public List<PlaylistEntry> buildPlaylist() 
-        {
+    public List<PlaylistEntry> buildPlaylist() {
         List<PlaylistEntry> playlist = new ArrayList<>();
-        if (level == null) 
-        {
-            return playlist;
-        }
+        if (level == null) return playlist;
 
-        for (BlockPos rackPos : linkedRackPositions) 
-        {
-            if (!level.isLoaded(rackPos)) 
-            {
-                continue;
-            }
+        // 1. Add discs from Racks
+        for (BlockPos rackPos : linkedRackPositions) {
+            if (!level.isLoaded(rackPos)) continue;
             BlockEntity be = level.getBlockEntity(rackPos);
-            if (!(be instanceof DiscRackBlockEntity rack))
-            {
-                continue;
-            }
-            for (int i = 0; i < rack.getContainerSize(); i++) 
-            {
+            if (!(be instanceof DiscRackBlockEntity rack)) continue;
+            for (int i = 0; i < rack.getContainerSize(); i++) {
                 ItemStack stack = rack.getItem(i);
-                if (!stack.isEmpty()) 
-                {
-                    playlist.add(new PlaylistEntry(rackPos,i,stack.copy()));
+                if (!stack.isEmpty()) {
+                    playlist.add(new PlaylistEntry(rackPos, i, stack.copy()));
                 }
             }
         }
-        playlist.sort((a, b) -> 
-        {
-            int posCompare = a.rackPos().compareTo(b.rackPos());
-            if (posCompare != 0)
-            {
-                return posCompare;
+
+        // 2. ADD THIS: Include the disc currently in the jukebox
+        BlockPos jukePos = findJukebox();
+        if (jukePos != null && level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
+            ItemStack inJukebox = jukebox.getTheItem();
+            if (!inJukebox.isEmpty() && currentlyPlayingEntry != null) {
+                // We add it back to the list at its "original" position so the UI doesn't jump
+                playlist.add(new PlaylistEntry(currentlyPlayingEntry.rackPos(), currentlyPlayingEntry.slotIndex(), inJukebox.copy()));
             }
-            return Integer.compare(a.slotIndex(), b.slotIndex());
+        }
+
+        // Sort remains the same
+        playlist.sort((a, b) -> {
+            int posCompare = a.rackPos().compareTo(b.rackPos());
+            return posCompare != 0 ? posCompare : Integer.compare(a.slotIndex(), b.slotIndex());
         });
         return playlist;
     }

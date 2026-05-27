@@ -1,5 +1,6 @@
 package com.azulc.ongakumod;
 
+import com.azulc.ongakumod.client.AutoplayControllerRenderer;
 import com.azulc.ongakumod.client.DiscRackRenderer;
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.client.screen.DiscRackScreen;
@@ -33,5 +34,6 @@ public class OngakuModClient {
     @SubscribeEvent
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(OngakuMod.DISCRACK_BLOCK_ENTITY.get(), DiscRackRenderer::new);
+        event.registerBlockEntityRenderer(OngakuMod.AUTOPLAY_BLOCK_ENTITY.get(), AutoplayControllerRenderer::new);
     }
 }

@@ -65,12 +65,19 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
     
     @Override
     protected void init() {
-        super.init(); // This will now correctly calculate this.leftPos and this.topPos
+        super.init();
 
         // Right Pane: Playlist (Starts 90px in)
+        // 1. Create the widget. 
+        // We pass 0 for width/height/top/itemHeight initially because setRectangle will handle it.
+        // Or keep them as placeholders.
         this.musicList = new MusicListWidget(this, 140, 140, this.topPos + 10, 20);
-        this.musicList.setX(this.leftPos + 95);
-        this.musicList.setY(this.topPos + 10);
+
+        // 2. Use setRectangle to define the EXACT bounds and position.
+        // This replaces setX, setY, and manual width/height adjustments.
+        this.musicList.setRectangle(140, 140, this.leftPos + 95, this.topPos + 10);
+
+        // 3. Add to the screen
         this.addRenderableWidget(this.musicList);
         this.musicList.refreshList(this.menu.getSyncedDiscs());
 
@@ -118,31 +125,38 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         graphics.drawString(this.font, "Link", this.leftPos + 22, this.topPos + 10, 0xFFFFFFFF, false);
 
         // 2. Now Playing Logic
-        int currentSlot = this.menu.getData().get(1);
-        if (currentSlot >= 0 && currentSlot < this.menu.getSyncedDiscs().size()) 
-        {
-            ItemStack playingStack = this.menu.getSyncedDiscs().get(currentSlot);
-            if (!playingStack.isEmpty()) 
-            {
-                graphics.renderItem(playingStack, this.leftPos + 37, this.topPos + 40);
-                List<Component> tooltip = getDiscDescription(playingStack,this.minecraft.level,this.minecraft.player,TooltipFlag.Default.NORMAL);
-                if (tooltip.size() >= 2) 
-                {
-                    // Line 0 is usually the Item Name (Music Disc)
-                    // Line 1 is usually the Author/Song info (e.g., "C418 - stal")
-                    Component songInfo = tooltip.get(1);
-                    String fullText = songInfo.getString();
-                    
-                    String[] parts = fullText.split(" - ");
-                    if (parts.length == 2) {
-                        graphics.drawCenteredString(this.font, parts[1], this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
-                        graphics.drawCenteredString(this.font, parts[0], this.leftPos + 45, this.topPos + 75, 0xFFAAAAAA);
-                    } else {
-                        graphics.drawCenteredString(this.font, fullText, this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
+        int currentVisualIndex = this.menu.getData().get(1); // This is the index calculated by the BE
+        
+        if (currentVisualIndex >= 0) {
+            // Instead of pulling from the list via index (which might be wrong if the list synced weirdly)
+            // We find the entry in our MusicListWidget that matches the index the BE told us is active.
+            if (this.musicList != null) {
+                for (MusicListWidget.MusicEntry entry : this.musicList.children()) {
+                    if (entry.index == this.menu.getData().get(1)) { // Match by original slot index
+                        this.musicList.setSelected(entry);
+                        
+                        // Render the big "Now Playing" icon and text
+                        ItemStack playingStack = entry.disc;
+                        graphics.renderItem(playingStack, this.leftPos + 37, this.topPos + 40);
+                        
+                        // Draw Tooltip info...
+                        List<Component> tooltip = getDiscDescription(playingStack, this.minecraft.level, this.minecraft.player, TooltipFlag.Default.NORMAL);
+                        if (tooltip.size() >= 2) {
+                            String fullText = tooltip.get(1).getString();
+                            String[] parts = fullText.split(" - ");
+                            if (parts.length == 2) {
+                                graphics.drawCenteredString(this.font, parts[1], this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
+                                graphics.drawCenteredString(this.font, parts[0], this.leftPos + 45, this.topPos + 75, 0xFFAAAAAA);
+                            } else {
+                                graphics.drawCenteredString(this.font, fullText, this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
+                            }
+                        }
+                        break; 
                     }
                 }
             }
-        } else 
+        }
+        else 
         {
             graphics.drawCenteredString(this.font, "No Disc", this.leftPos + 45, this.topPos + 65, 0xFFAAAAAA);
         }

@@ -14,19 +14,40 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 
-public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEntry> {
+public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEntry> 
+{
     private final AutoplayScreen screen;
-
-    public MusicListWidget(AutoplayScreen screen, int width, int height, int top, int itemHeight) {
-        // In 1.21.1, the constructor is (Minecraft, width, height, top, itemHeight)
+    public record CollapsedMusicEntry(ItemStack stack, int count, int originalIndex) {}
+    
+    public MusicListWidget(AutoplayScreen screen, int width, int height, int top, int itemHeight) 
+    {
         super(screen.getMinecraft(), width, height, top, itemHeight);
         this.screen = screen;
     }
 
     public void refreshList(List<ItemStack> discs) {
         this.clearEntries();
+        
+        // 1. Group the discs
+        // Key: The Item, Value: The wrapper containing count and the first index found
+        java.util.Map<net.minecraft.world.item.Item, CollapsedMusicEntry> groupedDiscs = new java.util.LinkedHashMap<>();
+
         for (int i = 0; i < discs.size(); i++) {
-            this.addEntry(new MusicEntry(discs.get(i), i));
+            ItemStack stack = discs.get(i);
+            if (stack.isEmpty()) continue;
+
+            net.minecraft.world.item.Item item = stack.getItem();
+            if (groupedDiscs.containsKey(item)) {
+                CollapsedMusicEntry existing = groupedDiscs.get(item);
+                groupedDiscs.put(item, new CollapsedMusicEntry(stack, existing.count() + 1, existing.originalIndex()));
+            } else {
+                groupedDiscs.put(item, new CollapsedMusicEntry(stack, 1, i));
+            }
+        }
+
+        // 2. Add the grouped results to the UI list
+        for (CollapsedMusicEntry collapsed : groupedDiscs.values()) {
+            this.addEntry(new MusicEntry(collapsed.stack(), collapsed.originalIndex(), collapsed.count()));
         }
     }
 
@@ -48,26 +69,38 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
     {
         public final ItemStack disc;
         public final int index;
+        public final int count;
 
-        public MusicEntry(ItemStack _disc, int _index) {
+        public MusicEntry(ItemStack _disc, int _index ,int _count) {
             this.disc = _disc;
             this.index = _index;
+            this.count = _count;
         }
 
         @Override
         public void render(GuiGraphics graphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean isHovered, float partialTick) {
-            
+            // Render Item
             graphics.renderFakeItem(disc, x + 2, y + 1);
-            List<Component> tooltip = getDiscDescription(disc,Minecraft.getInstance().level,Minecraft.getInstance().player,TooltipFlag.Default.NORMAL);
-            // Logic: If there is a second line (the song info), use it. 
-            // Otherwise, fallback to the item name.
+            
+            // Improved "xN" Rendering
+            if (this.count > 1) {
+                String countText = "x" + this.count;
+                graphics.pose().pushPose();
+                // Move the text slightly "forward" in Z-space so it's always on top
+                graphics.pose().translate(0, 0, 200); 
+                // Position it at the bottom-right of the icon (x+14, y+10)
+                graphics.drawString(Minecraft.getInstance().font, countText, x + 14, y + 10, 0xFFFFCC00, true); 
+                graphics.pose().popPose();
+            }
+
+            // Rest of your text rendering (Title / Author) ...
+            List<Component> tooltip = getDiscDescription(disc, Minecraft.getInstance().level, Minecraft.getInstance().player, TooltipFlag.Default.NORMAL);
             if (tooltip.size() >= 2) {
                 String fullText = tooltip.get(1).getString();
                 String[] parts = fullText.split(" - ");
-                
                 if (parts.length == 2) {
-                    graphics.drawString(Minecraft.getInstance().font, parts[1], x + 24, y + 1, 0xFFFFFFFF, false); // Title
-                    graphics.drawString(Minecraft.getInstance().font, parts[0], x + 24, y + 11, 0xFFAAAAAA, false); // Author
+                    graphics.drawString(Minecraft.getInstance().font, parts[1], x + 24, y + 1, 0xFFFFFFFF, false);
+                    graphics.drawString(Minecraft.getInstance().font, parts[0], x + 24, y + 11, 0xFFAAAAAA, false);
                 } else {
                     graphics.drawString(Minecraft.getInstance().font, fullText, x + 24, y + 5, 0xFFFFFFFF, false);
                 }

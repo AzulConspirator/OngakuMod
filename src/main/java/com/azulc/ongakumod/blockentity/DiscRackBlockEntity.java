@@ -25,6 +25,8 @@ import com.azulc.ongakumod.container.DiscContainer;
 public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implements WorldlyContainer 
 {
 
+    private BlockPos controllerPos = null;
+
     public DiscRackBlockEntity(BlockPos pos, BlockState state) {
         super(OngakuMod.DISCRACK_BLOCK_ENTITY.get(), pos, state);
         this.inventory = NonNullList.withSize(getContainerSize(), ItemStack.EMPTY);
@@ -82,6 +84,7 @@ public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implem
         if (!this.trySaveLootTable(tag)) {
             ContainerHelper.saveAllItems(tag, this.inventory, registries);
         }
+        if (controllerPos != null) tag.putLong("ControllerPos", controllerPos.asLong());
     }
 
     @Override
@@ -92,6 +95,7 @@ public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implem
         if (!this.tryLoadLootTable(tag)) {
             ContainerHelper.loadAllItems(tag, this.inventory, registries);
         }
+        if (tag.contains("ControllerPos")) controllerPos = BlockPos.of(tag.getLong("ControllerPos"));
     }
 
     @Override
@@ -140,4 +144,14 @@ public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implem
         }
         return list;
     }
+
+    public void setControllerPos(BlockPos pos) {
+    this.controllerPos = pos;
+    this.setChanged();
+    }
+
+    public BlockPos getControllerPos() {
+        return controllerPos;
+    }
+
 }

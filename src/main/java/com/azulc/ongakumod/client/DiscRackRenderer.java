@@ -36,7 +36,9 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
         BakedModel model = blockRenderer.getBlockModelShaper().getModelManager().getModel(OngakuModClient.VinylModel);
 
         ms.pushPose(); 
+        
         ms.translate(0.5, 0.5, 0.5);
+        //ms.scale(0.7f,0.7f,0.7f);
         ms.mulPose(Axis.YP.rotationDegrees(-dir.toYRot()));
         double startZ = -0.47;
         double spacing = 0.125;
