@@ -18,82 +18,117 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 
 import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.network.SyncPlaylistPayload;
 
-public class AutoplayControllerBlockEntity extends BlockEntity {
-    
-    private BlockPos linkedRackPos = null;
+public class AutoplayControllerBlockEntity extends BlockEntity 
+{
+    private final Set<BlockPos> linkedRackPositions = new HashSet<>();
     private int tickCounter = 0;
-    private int currentPlayingSlot = -1;
-    
-    public AutoplayControllerBlockEntity(BlockPos pos, BlockState state) {
+    private PlaylistEntry currentlyPlayingEntry = null;
+    private int currentPlaylistIndex = -1;
+    public record PlaylistEntry( BlockPos rackPos,int slotIndex,ItemStack stack) {}
+    public record DisplayPlaylistEntry( ItemStack stack, int count) {}
+
+    public AutoplayControllerBlockEntity(BlockPos pos, BlockState state) 
+    {
         super(OngakuMod.AUTOPLAY_BLOCK_ENTITY.get(), pos, state);
     }
 
-    public final ContainerData data = new ContainerData() {
+    //#region Container Data
+    public final ContainerData data = new ContainerData() 
+    {
         @Override
-        public int get(int index) {
-            return switch (index) {
-                case 0 -> linkedRackPos != null ? 1 : 0;
-                case 1 -> currentPlayingSlot;
-                case 2 -> {
-                    BlockPos jukePos = findJukebox();
-                    if (jukePos == null) yield -1; // No Jukebox
-                    if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
-                        yield jukebox.getTheItem().isEmpty() ? 0 : 1; // 0 = Connected/Empty, 1 = Connected/Playing
-                    }
-                    yield -1;
-                }
+        public int get(int index) 
+        {
+            return switch (index) 
+            {
+                case 0 -> linkedRackPositions.isEmpty() ? 0 : 1;
+                case 1 -> currentPlaylistIndex;
+                case 2 -> 
+                        {
+                            BlockPos jukePos = findJukebox();
+                            if (jukePos == null) yield -1;
+                            if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
+                                yield jukebox.getTheItem().isEmpty() ? 0 : 1;
+                            }
+                            yield -1;
+                        }
                 default -> 0;
             };
         }
-
         @Override
-        public void set(int index, int value) {
-            if (index == 1) currentPlayingSlot = value;
-            // Index 2 and 0 are read-only dynamic values calculated by the server logic
+        public void set(int index, int value) 
+        {
+            if (index == 1) {
+                currentPlaylistIndex = value;
+            }
         }
-
         @Override
-        public int getCount() {
+        public int getCount() 
+        {
             return 3;
         }
     };
-        
-    
-
-    // Called by the Block's use() method
-    public void setLinkedRack(BlockPos pos) {
-        this.linkedRackPos = pos;
-        this.setChanged(); // Crucial: Tells the game this needs to be saved
+    //#endregion
+    //#region Linked Rack Handler
+    public boolean addLinkedRack(BlockPos pos) 
+    {
+        if (this.linkedRackPositions.contains(pos))
+        {
+            return false;
+        }
+        this.linkedRackPositions.add(pos);
+        this.setChanged();
+        return true;
     }
 
-    // The core loop (runs every tick on the server)
+    public void removeLinkedRack(BlockPos pos) {
+        this.linkedRackPositions.remove(pos);
+        this.setChanged();
+    }
+
+    public void clearLinkedRacks() {
+        this.linkedRackPositions.clear();
+        this.setChanged();
+    }
+    //#endregion
+    //#region Server Tick
     public static void serverTick(Level level, BlockPos pos, BlockState state, AutoplayControllerBlockEntity entity) {
         entity.tickCounter++;
-        
         // Run validation every 20 ticks (1 second) to save performance
         if (entity.tickCounter % 20 == 0) {
             entity.validateAndProcess(level,pos);
         }
     }
 
-    private void validateAndProcess(Level level,BlockPos pos) {
-        if (this.linkedRackPos == null) return; // Not linked yet
-
-        // 1. Is the chunk loaded? (Don't wake up unloaded chunks)
-        if (!level.isLoaded(this.linkedRackPos)) return;
-
+    private void validateAndProcess(Level level,BlockPos pos) 
+    {
+        //if (this.linkedRackPos == null) return; // Not linked yet
+        if (this.linkedRackPositions.isEmpty()) return;
         // 2. Is it actually a Disc Rack?
-        BlockEntity targetBE = level.getBlockEntity(this.linkedRackPos);
-        if (!(targetBE instanceof DiscRackBlockEntity)) {
-            // The rack was broken or replaced! Break the link to prevent crashes.
-            this.linkedRackPos = null;
-            this.setChanged();
-            return;
+        Iterator<BlockPos> iterator = this.linkedRackPositions.iterator();
+
+        while (iterator.hasNext()) {
+            BlockPos rackPos = iterator.next();
+
+            if (!level.isLoaded(rackPos)) {
+                continue;
+            }
+
+            BlockEntity targetBE = level.getBlockEntity(rackPos);
+
+            if (!(targetBE instanceof DiscRackBlockEntity)) {
+                iterator.remove();
+                this.setChanged();
+            }
         }
 
         BlockPos jukeboxPos = null;
@@ -120,103 +155,69 @@ public class AutoplayControllerBlockEntity extends BlockEntity {
             this.data.set(2, -1); // -1 = No Jukebox Found
         }
     }
-
-    //#region --- NBT SAVING & LOADING --- //
-        @Override
+    //#endregion
+    //#region NBT SAVING & LOADING
+    @Override
     protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.saveAdditional(tag, registries);
-        if (this.linkedRackPos != null) {
-            tag.putLong("LinkedRackPos", this.linkedRackPos.asLong());
-        }
+
+        long[] positions = linkedRackPositions.stream()
+                .mapToLong(BlockPos::asLong)
+                .toArray();
+
+        tag.putLongArray("LinkedRacks", positions);
+
+        tag.putInt("CurrentPlayingSlot", currentPlaylistIndex);
     }
 
     @Override
     protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
         super.loadAdditional(tag, registries);
-        if (tag.contains("LinkedRackPos")) {
-            this.linkedRackPos = BlockPos.of(tag.getLong("LinkedRackPos"));
+
+        linkedRackPositions.clear();
+
+        long[] positions = tag.getLongArray("LinkedRacks");
+
+        for (long posLong : positions) {
+            linkedRackPositions.add(BlockPos.of(posLong));
         }
-    }
-    //#endregion
-    //#region Helpers 
-    public BlockPos getLinkedRackPos() {
-        return this.linkedRackPos;
+
+        currentPlaylistIndex = tag.getInt("CurrentPlayingSlot");
     }
 
-    // Helper to get the actual Rack instance
-    public DiscRackBlockEntity getRack(Level level) {
-        if (linkedRackPos == null || !level.isLoaded(linkedRackPos)) return null;
-        if (level.getBlockEntity(linkedRackPos) instanceof DiscRackBlockEntity rack) {
+    //#endregion
+    //#region Helpers 
+    public DiscRackBlockEntity getRack(BlockPos pos) 
+    {
+        if (level == null) { return null; }
+        if (!level.isLoaded(pos)) {return null;}
+
+        BlockEntity be = level.getBlockEntity(pos);
+        if (be instanceof DiscRackBlockEntity rack) {
             return rack;
         }
         return null;
     }
-    
-    // Add this inside AutoplayControllerBlockEntity
-    public void broadcastPlaylistUpdate() {
-        if (level == null || level.isClientSide) return;
-        DiscRackBlockEntity rack = getRack(level);
-        if (rack == null) return;
-        
-        List<ItemStack> currentDiscs = new ArrayList<>();
-        for (int i = 0; i < rack.getContainerSize(); i++) {
-            currentDiscs.add(rack.getItem(i).copy());
-        }
-        
-        // Broadcast to anyone looking at this chunk
-        PacketDistributor.sendToPlayersTrackingChunk((ServerLevel) level, new ChunkPos(worldPosition), new SyncPlaylistPayload(currentDiscs));
+        public Set<BlockPos> getLinkedRackPositions() {
+        return linkedRackPositions;
     }
 
-    public boolean isJukeboxAdjacent() {
-        for (Direction dir : Direction.values()) {
-            if (level.getBlockState(worldPosition.relative(dir)).is(Blocks.JUKEBOX)) {
-                return true;
-            }
-        }
-        return false;
-    }
 
-    private void returnDiscToRack(ItemStack existingDisc, int preferredSlot) 
+    private void clearJukebox(JukeboxBlockEntity jukebox, BlockPos pos) 
     {
-        DiscRackBlockEntity rack = this.getRack(level);
-        if (rack == null || existingDisc.isEmpty()) return;
-
-        boolean reinserted = false;
-        if (preferredSlot >= 0 && preferredSlot < rack.getContainerSize() && rack.getItem(preferredSlot).isEmpty()) 
-        {
-            rack.setItem(preferredSlot, existingDisc.copy());
-            reinserted = true;
-        }
-        if (!reinserted) {
-            for (int i = 0; i < rack.getContainerSize(); i++) {
-                if (rack.getItem(i).isEmpty()) {
-                    rack.setItem(i, existingDisc.copy());
-                    reinserted = true;
-                    break;
-                }
-            }
-        }
-        if (!reinserted) {
-            Block.popResource(level, worldPosition, existingDisc);
-        }
-
-        rack.setChanged();
-        level.sendBlockUpdated(rack.getBlockPos(), rack.getBlockState(), rack.getBlockState(), 3);
-    }
-
-    private void clearJukebox(JukeboxBlockEntity jukebox, BlockPos pos) {
         ItemStack existing = jukebox.getTheItem();
         if (!existing.isEmpty()) {
-            returnDiscToRack(existing, this.currentPlayingSlot);
+            returnDiscToRack(existing);
             jukebox.setTheItem(ItemStack.EMPTY);
         }
         
         BlockState state = level.getBlockState(pos);
-        if (state.hasProperty(JukeboxBlock.HAS_RECORD)) {
-            level.setBlock(pos, state.setValue(JukeboxBlock.HAS_RECORD, false), 3);
-        }
+        BlockState oldState = state;
+        BlockState newState = state.setValue(JukeboxBlock.HAS_RECORD, false);
+        level.setBlock(pos, newState, 3);
+        level.sendBlockUpdated(pos,oldState,newState,3);
         jukebox.getSongPlayer().stop(level, state);
-        this.currentPlayingSlot = -1;
+        this.currentPlaylistIndex = -1;
     }
 
     private BlockPos findJukebox() {
@@ -225,49 +226,104 @@ public class AutoplayControllerBlockEntity extends BlockEntity {
             BlockPos adjacent = worldPosition.relative(dir);
             if (level.getBlockState(adjacent).is(Blocks.JUKEBOX)) {
                 jukeboxPos = adjacent;
-                
                 break;
             }
         }
         return jukeboxPos;
     }
-
-public void tryPlayDisc(int slotIndex) {
-    if (level == null || level.isClientSide) return;
-
-    DiscRackBlockEntity rack = this.getRack(level);
-    if (rack == null) return;
-
-    ItemStack discInRack = rack.getItem(slotIndex);
-    if (discInRack.isEmpty()) return;
-
-    BlockPos jukeboxPos = findJukebox();
-    if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
-        
-        // 1. Full Stop & Reset
-        clearJukebox(jukebox, jukeboxPos);
-
-        // 2. Refresh target disc (Safety check)
-        ItemStack discToPlay = rack.getItem(slotIndex);
-        if (discToPlay.isEmpty()) return;
-
-        // 3. Physical Insert
-        ItemStack discCopy = discToPlay.split(1);
-        jukebox.setTheItem(discCopy);
-        this.currentPlayingSlot = slotIndex;
-
-        // 4. Update BlockState FIRST to tell the client "A record is here"
-        BlockState state = level.getBlockState(jukeboxPos);
-        if (state.hasProperty(JukeboxBlock.HAS_RECORD)) {
-            level.setBlock(jukeboxPos, state.setValue(JukeboxBlock.HAS_RECORD, true), 3);
+    //#endregion
+    //#region Main Packet
+    private void returnDiscToRack(ItemStack existingDisc) {
+        if (existingDisc.isEmpty()) { return; }
+        if (currentlyPlayingEntry == null) 
+        {
+            Block.popResource(level, worldPosition, existingDisc);
+            return;
         }
-        // 6. Final Sync
+        DiscRackBlockEntity rack =getRack(currentlyPlayingEntry.rackPos());
+        if (rack == null) {
+            Block.popResource(level, worldPosition, existingDisc);
+            return;
+        }
+        int slot = currentlyPlayingEntry.slotIndex();
+        if (slot >= 0 && slot < rack.getContainerSize() && rack.getItem(slot).isEmpty()) {
+            rack.setItem(slot, existingDisc.copy());
+        } 
+        else 
+        {
+            boolean inserted = false;
+            for (int i = 0; i < rack.getContainerSize(); i++) 
+            {
+                if (rack.getItem(i).isEmpty()) 
+                {
+                    rack.setItem(i, existingDisc.copy());
+                    inserted = true;
+                    break;
+                }
+            }
+            if (!inserted)
+            {
+                Block.popResource(level, worldPosition, existingDisc);
+            }
+        }
         rack.setChanged();
+        level.sendBlockUpdated(rack.getBlockPos(),rack.getBlockState(), rack.getBlockState(), 3);
+
+        currentlyPlayingEntry = null;
+        currentPlaylistIndex = -1;
+    }
+
+    public void tryPlayDisc(int playlistIndex) {
+        if (level == null || level.isClientSide) {
+            return;
+        }
+        List<PlaylistEntry> playlist = buildPlaylist();
+        if (playlistIndex < 0 || playlistIndex >= playlist.size()) {
+            return;
+        }
+        PlaylistEntry entry = playlist.get(playlistIndex);
+        DiscRackBlockEntity rack = getRack(entry.rackPos());
+        if (rack == null) {
+            return;
+        }
+        ItemStack discInRack = rack.getItem(entry.slotIndex());
+        if (discInRack.isEmpty()) {
+            return;
+        }
+        BlockPos jukeboxPos = findJukebox();
+        if (jukeboxPos == null) {
+            return;
+        }
+        if (!(level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox)) {
+            return;
+        }
+        clearJukebox(jukebox, jukeboxPos);
+        ItemStack refreshedDisc = rack.getItem(entry.slotIndex());
+        if (refreshedDisc.isEmpty()) {
+            return;
+        }
+        ItemStack discCopy = refreshedDisc.split(1);
+        jukebox.setTheItem(discCopy);
+        currentPlaylistIndex = playlistIndex;
+
+        currentlyPlayingEntry = new PlaylistEntry(
+                entry.rackPos(),
+                entry.slotIndex(),
+                discCopy.copy()
+        );
+        BlockState state = level.getBlockState(jukeboxPos);
+        BlockState oldState = state;
+        BlockState newState = state;
+        if (state.hasProperty(JukeboxBlock.HAS_RECORD)) {
+            newState = state.setValue(JukeboxBlock.HAS_RECORD, true);
+            level.setBlock(jukeboxPos, newState, 3);
+        }
+        rack.setChanged();
+        level.sendBlockUpdated(rack.getBlockPos(),rack.getBlockState(),rack.getBlockState(),3);
         jukebox.setChanged();
         this.setChanged();
-        level.sendBlockUpdated(jukeboxPos, state, state, 3);
+        level.sendBlockUpdated(jukeboxPos,oldState,newState,3);
     }
-}
 
     public void stopAndReturnDisc() {
         if (level == null || level.isClientSide) return;
@@ -282,6 +338,83 @@ public void tryPlayDisc(int slotIndex) {
             // Notify the client that the jukebox is now empty
             level.sendBlockUpdated(jukeboxPos, level.getBlockState(jukeboxPos), level.getBlockState(jukeboxPos), 3);
         }
+    }
+    //#endregion
+    //#region playlist Handler
+    public List<PlaylistEntry> buildPlaylist() 
+        {
+        List<PlaylistEntry> playlist = new ArrayList<>();
+        if (level == null) 
+        {
+            return playlist;
+        }
+
+        for (BlockPos rackPos : linkedRackPositions) 
+        {
+            if (!level.isLoaded(rackPos)) 
+            {
+                continue;
+            }
+            BlockEntity be = level.getBlockEntity(rackPos);
+            if (!(be instanceof DiscRackBlockEntity rack))
+            {
+                continue;
+            }
+            for (int i = 0; i < rack.getContainerSize(); i++) 
+            {
+                ItemStack stack = rack.getItem(i);
+                if (!stack.isEmpty()) 
+                {
+                    playlist.add(new PlaylistEntry(rackPos,i,stack.copy()));
+                }
+            }
+        }
+        playlist.sort((a, b) -> 
+        {
+            int posCompare = a.rackPos().compareTo(b.rackPos());
+            if (posCompare != 0)
+            {
+                return posCompare;
+            }
+            return Integer.compare(a.slotIndex(), b.slotIndex());
+        });
+        return playlist;
+    }
+
+    public List<DisplayPlaylistEntry> buildCollapsedPlaylist() 
+    {
+        Map<String, DisplayPlaylistEntry> map = new LinkedHashMap<>();
+        for (PlaylistEntry entry : buildPlaylist()) 
+        {
+            ItemStack stack = entry.stack();
+            String key = stack.getItem().toString();
+
+            if (map.containsKey(key)) 
+            {
+                DisplayPlaylistEntry existing = map.get(key);
+                map.put(key,new DisplayPlaylistEntry(existing.stack(),existing.count() + 1));
+            } 
+            else 
+            {
+                map.put(key,new DisplayPlaylistEntry(stack.copy(),1));
+            }
+        }
+        return new ArrayList<>(map.values());
+    }
+    public void broadcastPlaylistUpdate() {
+        if (level == null || level.isClientSide) {
+            return;
+        }
+        List<ItemStack> currentDiscs = new ArrayList<>();
+        for (PlaylistEntry entry : buildPlaylist()) {
+            currentDiscs.add(entry.stack().copy());
+        }
+
+        PacketDistributor.sendToPlayersTrackingChunk(
+                (ServerLevel) level,
+                new ChunkPos(worldPosition),
+                new SyncPlaylistPayload(currentDiscs)
+        );
     }
     //#endregion
 }

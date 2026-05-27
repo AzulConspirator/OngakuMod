@@ -42,19 +42,28 @@ public class TuningWrenchItem extends Item {
         }
 
         // PASTE LOGIC
-        if (be instanceof AutoplayControllerBlockEntity controller) {
+        if (be instanceof AutoplayControllerBlockEntity controller) 
+        {
             GlobalPos saved = stack.get(OngakuMod.SAVED_LOCATION.get());
-            
-            if (saved != null) {
-                // Check if dimension matches
-                if (saved.dimension() != level.dimension()) {
-                    context.getPlayer().displayClientMessage(Component.literal("Wrong Dimension!"), true);
+            if (saved != null) 
+            {
+                if (saved.dimension() != level.dimension()) 
+                {
+                    context.getPlayer().displayClientMessage(Component.literal("Wrong Dimension!"),true);
                     return InteractionResult.FAIL;
                 }
-                
-                controller.setLinkedRack(saved.pos());
-                stack.remove(OngakuMod.SAVED_LOCATION.get()); // Clear it
-                level.playSound(null, pos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.0f, 1.0f);
+                boolean added = controller.addLinkedRack(saved.pos());
+                if (added) 
+                {
+                    context.getPlayer().displayClientMessage(Component.literal("Rack Linked!"),true);
+                    level.playSound(null,pos,SoundEvents.NOTE_BLOCK_CHIME.value(),SoundSource.BLOCKS,1.0f,1.0f);
+                } 
+                else 
+                {
+                    context.getPlayer().displayClientMessage(Component.literal("Rack Already Linked!"),true);
+                }
+                stack.remove(OngakuMod.SAVED_LOCATION.get());
+                controller.setChanged();
                 return InteractionResult.SUCCESS;
             }
         }

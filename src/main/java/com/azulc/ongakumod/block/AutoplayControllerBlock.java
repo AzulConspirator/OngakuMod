@@ -59,28 +59,27 @@ public class AutoplayControllerBlock extends BaseEntityBlock
         return level.isClientSide ? null : createTickerHelper(type, OngakuMod.AUTOPLAY_BLOCK_ENTITY.get(), AutoplayControllerBlockEntity::serverTick);
     }
 
-
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
-        if (stack.getItem() instanceof TuningWrenchItem) return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+    protected ItemInteractionResult useItemOn(ItemStack stack,BlockState state,Level level,BlockPos pos,Player player,InteractionHand hand,BlockHitResult hitResult) 
+    {
+        if (stack.getItem() instanceof TuningWrenchItem) {
+            return ItemInteractionResult.PASS_TO_DEFAULT_BLOCK_INTERACTION;
+        }
 
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof AutoplayControllerBlockEntity controller) {
-                
-                // Fetch the discs from the linked rack to send to the client
-                List<ItemStack> discsFromRack = controller.getRack(level) != null ? 
-                                                controller.getRack(level).getContents() : // You might need to add a getContents() helper to your Rack BE
-                                                List.of();
-
-                serverPlayer.openMenu(new SimpleMenuProvider((id, inv, p) -> 
-                    new AutoplayMenu(id, inv, controller, controller.data, discsFromRack), 
-                    Component.literal("Autoplay Controller")), 
+                List<ItemStack> playlistDiscs = controller.buildCollapsedPlaylist().stream().map(entry -> entry.stack().copy()).toList();
+                serverPlayer.openMenu(
+                    new SimpleMenuProvider((id, inv, p) -> 
+                        new AutoplayMenu(id,inv,controller,controller.data,playlistDiscs),
+                        Component.literal("Autoplay Controller")
+                    ),
                     buf -> {
                         buf.writeBlockPos(pos);
-                        // Use the built-in streamer to send the list of items
-                        ItemStack.OPTIONAL_LIST_STREAM_CODEC.encode(buf, discsFromRack);
-                    });
+                        ItemStack.OPTIONAL_LIST_STREAM_CODEC.encode(buf,playlistDiscs);
+                    }
+                );
             }
         }
         return ItemInteractionResult.SUCCESS;
