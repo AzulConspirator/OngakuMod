@@ -2,6 +2,7 @@ package com.azulc.ongakumod.client.screen;
 
 import java.util.List;
 
+import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.client.screen.widget.MusicListWidget;
 import com.azulc.ongakumod.container.AutoplayMenu;
 
@@ -101,11 +102,11 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
         // Left Pane (Player)
-        graphics.fill(this.leftPos, this.topPos, this.leftPos + 90, this.topPos + this.imageHeight, 0xAA000000);
+        graphics.fill(this.leftPos, this.topPos, this.leftPos + 90, this.topPos + this.imageHeight, 0x66000000);
         // Right Pane (List)
-        graphics.fill(this.leftPos + 90, this.topPos, this.leftPos + this.imageWidth, this.topPos + this.imageHeight, 0x88000000);
+        graphics.fill(this.leftPos + 90, this.topPos, this.leftPos + this.imageWidth, this.topPos + this.imageHeight, 0x66000000);
         // Divider
-        graphics.fill(this.leftPos + 90, this.topPos, this.leftPos + 91, this.topPos + this.imageHeight, 0xFFFFFFFF);
+        graphics.fill(this.leftPos + 90, this.topPos, this.leftPos + 91, this.topPos + this.imageHeight, 0x66FFFFFF);
     }
 
     @Override
@@ -125,33 +126,33 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         graphics.drawString(this.font, "Link", this.leftPos + 22, this.topPos + 10, 0xFFFFFFFF, false);
 
         // 2. Now Playing Logic
-        int currentVisualIndex = this.menu.getData().get(1); // This is the index calculated by the BE
-        
-        if (currentVisualIndex >= 0) {
-            // Instead of pulling from the list via index (which might be wrong if the list synced weirdly)
-            // We find the entry in our MusicListWidget that matches the index the BE told us is active.
-            if (this.musicList != null) {
-                for (MusicListWidget.MusicEntry entry : this.musicList.children()) {
-                    if (entry.index == this.menu.getData().get(1)) { // Match by original slot index
-                        this.musicList.setSelected(entry);
-                        
-                        // Render the big "Now Playing" icon and text
-                        ItemStack playingStack = entry.disc;
-                        graphics.renderItem(playingStack, this.leftPos + 37, this.topPos + 40);
-                        
-                        // Draw Tooltip info...
-                        List<Component> tooltip = getDiscDescription(playingStack, this.minecraft.level, this.minecraft.player, TooltipFlag.Default.NORMAL);
-                        if (tooltip.size() >= 2) {
-                            String fullText = tooltip.get(1).getString();
-                            String[] parts = fullText.split(" - ");
-                            if (parts.length == 2) {
-                                graphics.drawCenteredString(this.font, parts[1], this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
-                                graphics.drawCenteredString(this.font, parts[0], this.leftPos + 45, this.topPos + 75, 0xFFAAAAAA);
-                            } else {
-                                graphics.drawCenteredString(this.font, fullText, this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
-                            }
-                        }
-                        break; 
+        int currentVisualIndex = this.menu.getData().get(1); // This is the Collapsed Index [cite: 29]
+        if (currentVisualIndex >= 0 && this.musicList != null) 
+        {
+            // Instead of looping and comparing mismatched indices, directly grab the exact row
+            if (currentVisualIndex < this.musicList.children().size()) 
+            {
+                MusicListWidget.MusicEntry entry = this.musicList.children().get(currentVisualIndex);
+                this.musicList.setSelected(entry);
+                
+                // Render the big "Now Playing" icon and text
+                ItemStack playingStack = entry.disc;
+                graphics.renderItem(playingStack, this.leftPos + 37, this.topPos + 40);
+                
+                // Draw Tooltip info...
+                List<Component> tooltip = getDiscDescription(playingStack, this.minecraft.level, this.minecraft.player, TooltipFlag.Default.NORMAL);
+                if (tooltip.size() >= 2) 
+                {
+                    String fullText = tooltip.get(1).getString();
+                    String[] parts = fullText.split(" - ");
+                    if (parts.length == 2) 
+                    {
+                        graphics.drawCenteredString(this.font, parts[1], this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
+                        graphics.drawCenteredString(this.font, parts[0], this.leftPos + 45, this.topPos + 75, 0xFFAAAAAA);
+                    }
+                    else 
+                    {
+                        graphics.drawCenteredString(this.font, fullText, this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
                     }
                 }
             }
@@ -160,10 +161,9 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         {
             graphics.drawCenteredString(this.font, "No Disc", this.leftPos + 45, this.topPos + 65, 0xFFAAAAAA);
         }
-
         super.render(graphics, mouseX, mouseY, partialTick); 
     }
-    
+        
     public static class FlatButton extends Button 
     {
 
@@ -173,17 +173,15 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         }
 
         @Override
-        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) 
+        {
             // 0x66000000 = default semi-transparent. 0x99FFFFFF = white-ish when hovered.
             int bgColor = this.isHoveredOrFocused() ? 0x66FFFFFF : 0x66000000;
             int textColor = this.isHoveredOrFocused() ? 0xFF000000 : 0xFFFFFFFF; // Invert text on hover
-
             // Draw flat background
             graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
-            
             // Draw centered text
-            graphics.drawCenteredString(Minecraft.getInstance().font, this.getMessage(), 
-                this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, textColor);
+            graphics.drawCenteredString(Minecraft.getInstance().font, this.getMessage(), this.getX() + this.width / 2, this.getY() + (this.height - 8) / 2, textColor);
         }
     }
 }

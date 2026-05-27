@@ -22,7 +22,7 @@ public class DiscColorCache
         return stack.has(DataComponents.JUKEBOX_PLAYABLE);
     };
 
-    public record DiscColors(int vinylColor, int labelColor, int OutlineColor) {}
+    public record DiscColors(int vinylColor, int labelColor, int OutlineColor,int Outline2Color, int label2Color) {}
 
     public static void update(ResourceManager manager) 
     {
@@ -40,10 +40,12 @@ public class DiscColorCache
             {
                 try (InputStream is = resource.open(); NativeImage image = NativeImage.read(is)) 
                 {
-                    int rawVinyl    = sampleFromGrid(image, 4, 5); //4x4
-                    int rawLabel    = sampleFromGrid(image, 7, 6); //6x6
+                    int rawVinyl    = sampleFromGrid(image, 3, 5); //4x4
+                    int rawLabel    = sampleFromGrid(image, 6, 7); //6x6
                     int rawOutline  = sampleFromGrid(image, 9, 11); //9x11
-                    CACHE.put(item, new DiscColors(formatColor(rawVinyl), formatColor(rawLabel), formatColor(rawOutline)));
+                    int rawOutline2 = sampleFromGrid(image, 13, 9); //9x11
+                    int rawLabel2    = sampleFromGrid(image, 8, 7);
+                    CACHE.put(item, new DiscColors(formatColor(rawVinyl), formatColor(rawLabel), formatColor(rawOutline),formatColor(rawOutline2),formatColor(rawLabel2)));
                     
                     OngakuMod.LOGGER.info("SUCCESS: Sampled {} - Vinyl: {}, Label: {}, Outline: {}", location, Integer.toHexString(rawVinyl), Integer.toHexString(rawLabel),Integer.toHexString(rawOutline));
                 } 
@@ -90,6 +92,6 @@ public class DiscColorCache
 
     public static DiscColors getColors(Item item) 
     {
-        return CACHE.getOrDefault(item, new DiscColors(0xFF222222, 0xFFFFFFFF,0xFF222222));
+        return CACHE.getOrDefault(item, new DiscColors(0xFF222222, 0xFFFFFFFF,0xFF222222,0xFF222222, 0xFFFFFFFF));
     }
 }

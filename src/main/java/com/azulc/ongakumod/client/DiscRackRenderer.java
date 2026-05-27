@@ -36,13 +36,18 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
         BakedModel model = blockRenderer.getBlockModelShaper().getModelManager().getModel(OngakuModClient.VinylModel);
 
         ms.pushPose(); 
-        
         ms.translate(0.5, 0.5, 0.5);
-        //ms.scale(0.7f,0.7f,0.7f);
         ms.mulPose(Axis.YP.rotationDegrees(-dir.toYRot()));
-        double startZ = -0.47;
-        double spacing = 0.125;
-        double yOffset = -0.44;
+        
+        float scale = 0.7f;
+        ms.scale(scale, scale, scale);
+
+        double startZ = -0.47 / scale; 
+        double spacing = 0.125 / scale;
+        double yOffset = -0.5 / scale + 0.05;
+        //double startZ = -0.47;
+        //double spacing = 0.125;
+        //double yOffset = -0.44;
 
         for (int i = 0; i < rack.getContainerSize(); i++) 
         {
@@ -80,6 +85,8 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
                 case 0 -> colors.vinylColor();
                 case 1 -> colors.labelColor();
                 case 2 -> colors.OutlineColor();
+                case 3 -> colors.Outline2Color();
+                case 4 -> colors.label2Color();
                 default -> colors.vinylColor();
             };
             

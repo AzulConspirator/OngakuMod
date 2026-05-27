@@ -81,25 +81,14 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         public void render(GuiGraphics graphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean isHovered, float partialTick) {
             // Render Item
             graphics.renderFakeItem(disc, x + 2, y + 1);
-            
-            // Improved "xN" Rendering
-            if (this.count > 1) {
-                String countText = "x" + this.count;
-                graphics.pose().pushPose();
-                // Move the text slightly "forward" in Z-space so it's always on top
-                graphics.pose().translate(0, 0, 200); 
-                // Position it at the bottom-right of the icon (x+14, y+10)
-                graphics.drawString(Minecraft.getInstance().font, countText, x + 14, y + 10, 0xFFFFCC00, true); 
-                graphics.pose().popPose();
-            }
-
-            // Rest of your text rendering (Title / Author) ...
+            // ( Title / Author ) ...
             List<Component> tooltip = getDiscDescription(disc, Minecraft.getInstance().level, Minecraft.getInstance().player, TooltipFlag.Default.NORMAL);
             if (tooltip.size() >= 2) {
                 String fullText = tooltip.get(1).getString();
                 String[] parts = fullText.split(" - ");
                 if (parts.length == 2) {
-                    graphics.drawString(Minecraft.getInstance().font, parts[1], x + 24, y + 1, 0xFFFFFFFF, false);
+                    String countText = this.count > 1? " x" + this.count : "";
+                    graphics.drawString(Minecraft.getInstance().font, parts[1] + countText, x + 24, y + 1, 0xFFFFFFFF, false);
                     graphics.drawString(Minecraft.getInstance().font, parts[0], x + 24, y + 11, 0xFFAAAAAA, false);
                 } else {
                     graphics.drawString(Minecraft.getInstance().font, fullText, x + 24, y + 5, 0xFFFFFFFF, false);
