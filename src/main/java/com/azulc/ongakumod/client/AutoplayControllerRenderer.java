@@ -3,6 +3,7 @@ package com.azulc.ongakumod.client;
 import org.joml.Matrix4f;
 
 import com.azulc.ongakumod.OngakuMod;
+import com.azulc.ongakumod.block.AutoplayControllerBlock;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
@@ -17,12 +18,16 @@ import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.resources.ResourceLocation;
 
 public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayControllerBlockEntity> 
 {    
     @SuppressWarnings("unused")
     private final net.minecraft.client.renderer.block.BlockRenderDispatcher blockRenderer;
-
+    private static final ResourceLocation STATUS_TEX = ResourceLocation.fromNamespaceAndPath("ongakumod", "textures/block/controller_status.png");
+    private static final ResourceLocation PROGRESS_TEX = ResourceLocation.fromNamespaceAndPath("ongakumod", "textures/block/controller_progress.png")
+    ;
     public AutoplayControllerRenderer(BlockEntityRendererProvider.Context ctx) 
     {
         this.blockRenderer = ctx.getBlockRenderDispatcher();
@@ -34,15 +39,58 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
         LocalPlayer player = Minecraft.getInstance().player;
         if (player == null || player.level() == null) return;
 
+        //Render Connection lines from Rack to Controller
         boolean holdingWrench = player.getMainHandItem().is(OngakuMod.TUNING_WRENCH.get()) || player.getOffhandItem().is(OngakuMod.TUNING_WRENCH.get());
-
         if (holdingWrench) {
             for (BlockPos rackPos : controller.getLinkedRackPositions()) {
                 renderLineBetweenBlocks(controller.getBlockPos(), rackPos, poseStack, bufferSource, 0x00FFFF); // Cyan
             }
         }
+        // on Block Face Indicators
+        Direction facing = controller.getBlockState().getValue(AutoplayControllerBlock.FACING);
+        // Status (0-2) and Progress (0-12)
+        int statusFrame = controller.data.get(2); 
+        int progressFrame = controller.getCurrentProgressFrame(); 
+        poseStack.pushPose();
+        poseStack.translate(0.5, 0.5, 0.5);
+        // FIX: Add 180 to the rotation if it was facing backwards
+        float degrees = -facing.toYRot() + 180f; 
+        poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(degrees));
+        poseStack.translate(-0.5, -0.5, -0.5);
+        // We use a Z of 0.49/16 to put it just in front of the door (0.5)
+        // Front Face of the indicator cube
+        float zFront = 1.9f / 16f;
+        // Render Status
+        renderFace(poseStack, bufferSource.getBuffer(RenderType.entityCutout(STATUS_TEX)), 
+            5/16f, 12/16f, 7/16f, 14/16f, zFront, statusFrame+1, 3, packedLight, packedOverlay);
+        // Render Progress
+        renderFace(poseStack, bufferSource.getBuffer(RenderType.entityCutout(PROGRESS_TEX)), 
+            3/16f, 6/16f, 13/16f, 7/16f, zFront, progressFrame, 13, packedLight, packedOverlay);
+        poseStack.popPose();
     }
     
+    private void renderFace(PoseStack poseStack, VertexConsumer consumer, 
+                            float minX, float minY, float maxX, float maxY, float z, 
+                            int frame, int totalFrames, int light, int overlay) {
+        Matrix4f matrix = poseStack.last().pose();
+        float fH = 1.0f / totalFrames;
+        float minV = frame * fH;
+        float maxV = minV + fH;
+
+        // --- SIDE A (Counter-Clockwise) ---
+        consumer.addVertex(matrix, minX, minY, z).setColor(1f, 1f, 1f, 1f).setUv(0, maxV).setOverlay(overlay).setLight(light).setNormal(0, 0, -1);
+        consumer.addVertex(matrix, maxX, minY, z).setColor(1f, 1f, 1f, 1f).setUv(1, maxV).setOverlay(overlay).setLight(light).setNormal(0, 0, -1);
+        consumer.addVertex(matrix, maxX, maxY, z).setColor(1f, 1f, 1f, 1f).setUv(1, minV).setOverlay(overlay).setLight(light).setNormal(0, 0, -1);
+        consumer.addVertex(matrix, minX, maxY, z).setColor(1f, 1f, 1f, 1f).setUv(0, minV).setOverlay(overlay).setLight(light).setNormal(0, 0, -1);
+
+        // --- SIDE B (Clockwise / Flipped) ---
+        // We reverse the X order so the "back" becomes the "front"
+        consumer.addVertex(matrix, maxX, minY, z).setColor(1f, 1f, 1f, 1f).setUv(1, maxV).setOverlay(overlay).setLight(light).setNormal(0, 0, 1);
+        consumer.addVertex(matrix, minX, minY, z).setColor(1f, 1f, 1f, 1f).setUv(0, maxV).setOverlay(overlay).setLight(light).setNormal(0, 0, 1);
+        consumer.addVertex(matrix, minX, maxY, z).setColor(1f, 1f, 1f, 1f).setUv(0, minV).setOverlay(overlay).setLight(light).setNormal(0, 0, 1);
+        consumer.addVertex(matrix, maxX, maxY, z).setColor(1f, 1f, 1f, 1f).setUv(1, minV).setOverlay(overlay).setLight(light).setNormal(0, 0, 1);
+    }
+
     private void renderLineBetweenBlocks(BlockPos start, BlockPos end, PoseStack poseStack, MultiBufferSource bufferSource, int color) 
     {
         float red = (color >> 16 & 255) / 255.0F;

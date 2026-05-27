@@ -252,7 +252,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
         return null;
     }
-        public Set<BlockPos> getLinkedRackPositions() {
+    
+    public Set<BlockPos> getLinkedRackPositions() {
         return linkedRackPositions;
     }
 
@@ -262,12 +263,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             if (rack == null) continue;
 
             for (int i = 0; i < rack.getContainerSize(); i++) {
-                // We are looking for a "ghost" of this disc. 
-                // In a more complex mod, you might store UUIDs on the ItemStacks, 
-                // but for now, we check if the slot is empty and 'suitable'.
                 if (rack.getItem(i).isEmpty()) {
-                    // We assume this empty slot is where the disc came from
-                    // You can add more logic here to verify if it's the 'right' disc type
                     this.currentlyPlayingEntry = new PlaylistEntry(rackPos, i, playing.copy());
                     this.setChanged();
                     return; 
@@ -292,7 +288,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         this.currentPlaylistIndex = -1;
     }
 
-    private BlockPos findJukebox() {
+    public BlockPos findJukebox() {
         BlockPos jukeboxPos = null;
         for (Direction dir : Direction.values()) {
             BlockPos adjacent = worldPosition.relative(dir);
@@ -302,6 +298,43 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             }
         }
         return jukeboxPos;
+    }
+    public int getCurrentProgressFrame()
+    {
+        if (level == null) return 0;
+
+        BlockPos jukeboxPos = findJukebox();
+        if (jukeboxPos == null) return 0;
+
+        if (level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
+            var Songplayer = jukebox.getSongPlayer();
+            
+            // If it's not playing or the song holder is missing, show frame 0 (empty)
+            if (!Songplayer.isPlaying() || Songplayer.getSong() == null) {
+                return 0;
+            }
+
+            // Current progress in ticks
+            long currentTicks = Songplayer.getTicksSinceSongStarted();
+            
+            // Total duration of the song in ticks
+            // JukeboxSong is a record containing 'lengthInTicks'
+            float totalTicks = jukebox.getSongPlayer().getSong().lengthInTicks();
+
+            if (totalTicks <= 0) return 0;
+
+            // Calculate the ratio (0.0 to 1.0)
+            float progress = (float) currentTicks / totalTicks;
+
+            // Map progress to our 13 frames (0 to 12)
+            // Using Math.round helps prevent the bar from feeling "late"
+            int frame = Math.round(progress * 12);
+
+            // Clamp the result to ensure we don't exceed texture bounds
+            return Math.max(0, Math.min(12, frame));
+        }
+
+        return 0;
     }
     //#endregion
     //#region Main Packet
