@@ -1,10 +1,10 @@
 {
-	"format_version": "1.21.11",
+	"format_version": "1.12.0",
 	"credit": "Made with Blockbench",
 	"parent": "minecraft:block/block",
 	"textures": {
-		"particle": "block/spruce_planks",
-		"spruce": "block/spruce_planks"
+		"particle": "block/spruce_log",
+		"spruce": "block/spruce_log"
 	},
 	"elements": [
 		{
@@ -483,5 +483,45 @@
 				"down": {"uv": [0, 0, 6, 1], "texture": "#spruce"}
 			}
 		}
-	]
+	],
+	"display": {
+		"thirdperson_righthand": {
+			"rotation": [0, 45, 0],
+			"translation": [0, 3, 0],
+			"scale": [0.4, 0.4, 0.4]
+		},
+		"thirdperson_lefthand": {
+			"rotation": [0, 45, 0],
+			"translation": [0, 3, 0],
+			"scale": [0.4, 0.4, 0.4]
+		},
+		"firstperson_righthand": {
+			"rotation": [0, 45, 0],
+			"translation": [0, 3, 0],
+			"scale": [0.4, 0.4, 0.4]
+		},
+		"firstperson_lefthand": {
+			"rotation": [0, 45, 0],
+			"translation": [0, 3, 0],
+			"scale": [0.4, 0.4, 0.4]
+		},
+		"ground": {
+			"translation": [0, 2.75, 0],
+			"scale": [0.63, 0.63, 0.63]
+		},
+		"gui": {
+			"rotation": [30, -135, 0],
+			"translation": [0, 3.75, 0],
+			"scale": [0.88, 0.88, 0.88]
+		},
+		"head": {
+			"translation": [0, 11.75, 0],
+			"scale": [0.72, 0.72, 0.72]
+		},
+		"fixed": {
+			"rotation": [0, 90, 0],
+			"translation": [0, 4.75, 0],
+			"scale": [1.01, 1.01, 1.01]
+		}
+	}
 }

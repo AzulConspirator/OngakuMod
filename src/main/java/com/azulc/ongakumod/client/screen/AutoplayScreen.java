@@ -2,7 +2,6 @@ package com.azulc.ongakumod.client.screen;
 
 import java.util.List;
 
-import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.client.screen.widget.MusicListWidget;
 import com.azulc.ongakumod.container.AutoplayMenu;
 
@@ -83,24 +82,32 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         this.musicList.refreshList(this.menu.getSyncedDiscs());
 
         // Left Pane: Custom Flat Buttons
-        this.addRenderableWidget(new FlatButton(this.leftPos + 5, this.topPos + 130, 38, 20, Component.literal("Stop"), (button) -> {
+        this.addRenderableWidget(new FlatButton(this.leftPos + 5, this.topPos + 130, 38, 20, Component.literal("■"), (button) -> {
             PacketDistributor.sendToServer(new StopDiscPayload(this.menu.getBlockPos()));
         }));
 
-        this.addRenderableWidget(new FlatButton(this.leftPos + 47, this.topPos + 130, 38, 20, Component.literal("Play"), (button) -> {
-            if (this.musicList.getSelected() != null) {
+        this.addRenderableWidget(new FlatButton(this.leftPos + 47, this.topPos + 130, 38, 20, Component.literal("►"), (button) -> {
+            if (this.musicList.getSelected() != null) 
+            { 
                 this.setSelectedDisc(this.musicList.getSelected().index);
             }
         }));
     }
 
-    public void setSelectedDisc(int index) {
+    public AutoplayMenu getMenu() 
+    {
+        return this.menu;
+    }
+    
+    public void setSelectedDisc(int index) 
+    {
         BlockPos pos = this.menu.getBlockPos();
         PacketDistributor.sendToServer(new PlayDiscPayload(pos, index));
     }
 
     @Override
-    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
+    protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) 
+    {
         // Left Pane (Player)
         graphics.fill(this.leftPos, this.topPos, this.leftPos + 90, this.topPos + this.imageHeight, 0x66000000);
         // Right Pane (List)

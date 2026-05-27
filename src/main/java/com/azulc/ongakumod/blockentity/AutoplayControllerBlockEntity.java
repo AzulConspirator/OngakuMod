@@ -446,7 +446,6 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                 }
             }
         }
-
         // Sort remains the same
         playlist.sort((a, b) -> {
             int posCompare = a.rackPos().compareTo(b.rackPos());

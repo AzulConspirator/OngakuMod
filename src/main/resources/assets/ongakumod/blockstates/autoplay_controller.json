@@ -1,5 +1,9 @@
 {
-  "variants": {
-    "": { "model": "ongakumod:block/autoplay_controller" }
+  "variants": 
+  {
+    "facing=north": {"model": "ongakumod:block/autoplay_controller"},
+    "facing=east": {"model": "ongakumod:block/autoplay_controller","y":90 },
+    "facing=south": {"model": "ongakumod:block/autoplay_controller","y": 180},
+    "facing=west": {"model": "ongakumod:block/autoplay_controller","y": 270}
   }
 }
