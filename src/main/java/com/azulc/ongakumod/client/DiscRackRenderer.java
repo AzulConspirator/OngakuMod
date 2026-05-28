@@ -81,9 +81,11 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
             double startZ = -0.3 / scale; 
             double spacing = 0.09 / scale;
             double yOffset = -0.4 / scale;
-            for (int i = 0; i < rack.getContainerSize(); i++) {
+            for (int i = 0; i < rack.getContainerSize(); i++) 
+            {
                 ItemStack stack = rack.getItem(i);
-                if (!stack.isEmpty()) {
+                if (!stack.isEmpty()) 
+                {
                     ms.pushPose();
                     double currentZ = startZ + (i * spacing);
                     ms.translate(-0.5, yOffset, currentZ);
@@ -102,9 +104,11 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
             double startZ = -0.47 / scale; 
             double spacing = 0.125 / scale;
             double yOffset = -0.5 / scale + 0.05;
-            for (int i = 0; i < rack.getContainerSize(); i++) {
+            for (int i = 0; i < rack.getContainerSize(); i++) 
+            {
                 ItemStack stack = rack.getItem(i);
-                if (!stack.isEmpty()) {
+                if (!stack.isEmpty()) 
+                {
                     ms.pushPose();
                     double currentZ = startZ + (i * spacing);
                     ms.translate(-0.5, yOffset, currentZ); 
@@ -134,12 +138,15 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
         {
             int color =  switch (quad.getTintIndex())
             {
-                case 0 -> colors.vinylColor();
-                case 1 -> colors.labelColor();
-                case 2 -> colors.OutlineColor();
-                case 3 -> colors.Outline2Color();
-                case 4 -> colors.label2Color();
-                default -> colors.vinylColor();
+                case 1 -> colors.Index1Color(); // Vinyl
+                case 2 -> colors.Index2Color(); // Vinyl 1
+                case 3 -> colors.Index3Color(); // Center
+                case 4 -> colors.Index4Color(); // Center
+                case 5 -> colors.Index5Color(); // Center
+                case 6 -> colors.Index6Color(); // Outline
+                case 7 -> colors.Index7Color(); // Outline 1
+                case 8 -> colors.Index8Color(); // Outline 2
+                default -> colors.Index1Color();
             };
             
             float r = ((color >> 16) & 0xFF) / 255.0f;

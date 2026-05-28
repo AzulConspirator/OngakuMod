@@ -133,6 +133,11 @@ public class AutoplayControllerBlockEntity extends BlockEntity
 
     public void removeLinkedRack(BlockPos pos) {
         this.linkedRackPositions.remove(pos);
+        this.buildPlaylist(); 
+        if (level != null && !level.isClientSide) {
+            level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
+            broadcastPlaylistUpdate(); 
+        }
         this.setChanged();
     }
 

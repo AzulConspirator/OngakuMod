@@ -39,14 +39,14 @@ displayName="${mod_name}" #mandatory
 #logoFile="examplemod.png" #optional
 
 # A text field displayed in the mod UI
-#credits="" #optional
+#credits="AzulC" #optional
 
 # The authors of the mod, displayed in the mod UI (optional)
-#authors=""
+#authors="AzulC"
 
 # The description text for the mod (multi line!) (#mandatory)
 description='''
-Example mod description.
+Adds stylish vinyl storage and audio furniture to Minecraft. Organize your music collection with Disc Racks, Disc Boxes, and Wall Mounts, then connect them to a Sound Box for seamless jukebox playback and automatic disc management.
 '''
 
 # The [[mixins]] block allows you to declare your mixin config to FML so that it gets loaded.

@@ -1,5 +1,6 @@
 package com.azulc.ongakumod.block;
 
+import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
@@ -43,6 +44,10 @@ public class DiscRackBlock extends HorizontalDirectionalBlock implements EntityB
             if (blockEntity instanceof DiscRackBlockEntity rack) {
                 Containers.dropContents(level, pos, rack);
                 level.updateNeighbourForOutputSignal(pos, this);
+                BlockPos controllerPos = rack.getControllerPos();
+                if (controllerPos != null && level.getBlockEntity(controllerPos) instanceof AutoplayControllerBlockEntity controller) {
+                    controller.removeLinkedRack(pos);
+                }
             }
             super.onRemove(state, level, pos, newState, isMoving);
         }
@@ -89,6 +94,7 @@ public class DiscRackBlock extends HorizontalDirectionalBlock implements EntityB
     public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
         return new DiscRackBlockEntity(blockPos, blockState);
     }
+
 
     @Override
     protected VoxelShape getShape(BlockState blockState, BlockGetter blockGetter, BlockPos blockPos, CollisionContext collisionContext) {

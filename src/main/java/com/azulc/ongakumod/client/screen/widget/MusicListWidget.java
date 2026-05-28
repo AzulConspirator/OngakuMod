@@ -23,8 +23,14 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
     {
         super(screen.getMinecraft(), width, height, top, itemHeight);
         this.screen = screen;
+        //this.setRenderSelection(false);
     }
 
+    @Override
+    protected void renderSelection(GuiGraphics graphics, int top, int width, int height, int outerColor, int innerColor) {
+        // Leave empty to suppress the bugged vanilla white outline.
+    }
+    
     public void refreshList(List<ItemStack> discs) {
         this.clearEntries();
 

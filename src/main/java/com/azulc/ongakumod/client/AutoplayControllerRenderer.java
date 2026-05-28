@@ -1,5 +1,7 @@
 package com.azulc.ongakumod.client;
 
+import java.util.OptionalDouble;
+
 import org.joml.Matrix4f;
 
 import com.azulc.ongakumod.OngakuMod;
@@ -86,9 +88,7 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
         poseStack.popPose();
     }
     
-    private void renderFace(PoseStack poseStack, VertexConsumer consumer, 
-                            float minX, float minY, float maxX, float maxY, float z, 
-                            int frame, int totalFrames, int light, int overlay) {
+    private void renderFace(PoseStack poseStack, VertexConsumer consumer, float minX, float minY, float maxX, float maxY, float z, int frame, int totalFrames, int light, int overlay) {
         Matrix4f matrix = poseStack.last().pose();
         float fH = 1.0f / totalFrames;
         float minV = frame * fH;
@@ -122,14 +122,16 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
         buffer.addVertex(matrix, dx + 0.5f, dy + 0.5f, dz + 0.5f).setColor(red, green, blue, 1.0f).setNormal(0, 1, 0);
     }
 
-    private static final RenderType LINES = RenderType.create("ongaku_lines",DefaultVertexFormat.POSITION_COLOR_NORMAL,VertexFormat.Mode.LINES,256,false,false,
-            RenderType.CompositeState.builder()
-                    .setShaderState(RenderStateShard.RENDERTYPE_LINES_SHADER)
-                    .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
-                    .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
-                    .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
-                    .setCullState(RenderStateShard.NO_CULL)
-                    .createCompositeState(false));
+    private static final RenderType LINES = RenderType.create("ongaku_lines",
+    DefaultVertexFormat.POSITION_COLOR_NORMAL, VertexFormat.Mode.LINES, 256, false, false,
+    RenderType.CompositeState.builder()
+            .setShaderState(RenderStateShard.RENDERTYPE_LINES_SHADER)
+            .setLayeringState(RenderStateShard.VIEW_OFFSET_Z_LAYERING)
+            .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
+            .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
+            .setCullState(RenderStateShard.NO_CULL)
+            .setLineState(new RenderStateShard.LineStateShard(OptionalDouble.of(2.0D))) 
+            .createCompositeState(false));
 
     @Override
     public boolean shouldRenderOffScreen(AutoplayControllerBlockEntity be) {

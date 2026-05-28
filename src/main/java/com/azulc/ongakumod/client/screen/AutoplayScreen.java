@@ -133,7 +133,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         graphics.drawString(this.font, "Sound Box", this.leftPos + 22, this.topPos + 10, 0xFFFFFFFF, false);
 
         // 2. Now Playing Logic
-        int currentVisualIndex = this.menu.getData().get(1); // This is the Collapsed Index [cite: 29]
+        int currentVisualIndex = this.menu.getData().get(1); // This is the Collapsed Index 
         if (currentVisualIndex >= 0 && this.musicList != null) 
         {
             // Instead of looping and comparing mismatched indices, directly grab the exact row
