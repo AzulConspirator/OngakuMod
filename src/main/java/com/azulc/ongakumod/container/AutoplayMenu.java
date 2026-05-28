@@ -21,7 +21,7 @@ public class AutoplayMenu extends AbstractContainerMenu {
     // Client-side constructor (Used by IMenuTypeExtension)
     public AutoplayMenu(int containerId, Inventory inv, BlockPos pos, List<ItemStack> initialDiscs) {
         this(containerId, inv, (AutoplayControllerBlockEntity) inv.player.level().getBlockEntity(pos), 
-             new SimpleContainerData(3), initialDiscs); // Note: Data size 3
+             new SimpleContainerData(4), initialDiscs); // Note: Data size 4
     }
 
     // Server-side constructor (Used by the Block)

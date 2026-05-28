@@ -9,6 +9,7 @@ import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.blaze3d.vertex.VertexFormat;
+import com.mojang.math.Axis;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -50,19 +51,35 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
         Direction facing = controller.getBlockState().getValue(AutoplayControllerBlock.FACING);
         // Status (0-2) and Progress (0-12)
         int statusFrame = controller.data.get(2); 
-        int progressFrame = controller.getCurrentProgressFrame(); 
+        int statusFrameOutput = switch (statusFrame) {
+            case -1 -> 0;
+            case 0 -> 1;
+            case 1 -> 2;
+            default -> 0;
+        };
+        long startTick = controller.getSongStartTick();
+        int duration = controller.getSongDurationTicks();
+        int progressFrame = 0;
+
+        // Explicitly check if a song is actually supposed to be playing
+        if (startTick != -1 && duration > 0) {
+            long elapsed = controller.getLevel().getGameTime() - startTick;
+            
+            // Clamp elapsed so network latency doesn't make it negative or overflow
+            elapsed = Math.max(0, Math.min(elapsed, duration));
+            
+            float progress = (float) elapsed / duration;
+            progressFrame = Math.round(progress * 12);
+        }
         poseStack.pushPose();
         poseStack.translate(0.5, 0.5, 0.5);
-        // FIX: Add 180 to the rotation if it was facing backwards
         float degrees = -facing.toYRot() + 180f; 
-        poseStack.mulPose(com.mojang.math.Axis.YP.rotationDegrees(degrees));
+        poseStack.mulPose(Axis.YP.rotationDegrees(degrees));
         poseStack.translate(-0.5, -0.5, -0.5);
-        // We use a Z of 0.49/16 to put it just in front of the door (0.5)
-        // Front Face of the indicator cube
-        float zFront = 1.9f / 16f;
+        float zFront = 1.95f / 16f;
         // Render Status
         renderFace(poseStack, bufferSource.getBuffer(RenderType.entityCutout(STATUS_TEX)), 
-            5/16f, 12/16f, 7/16f, 14/16f, zFront, statusFrame+1, 3, packedLight, packedOverlay);
+            5/16f, 12/16f, 7/16f, 14/16f, zFront, statusFrameOutput, 3, packedLight, packedOverlay);
         // Render Progress
         renderFace(poseStack, bufferSource.getBuffer(RenderType.entityCutout(PROGRESS_TEX)), 
             3/16f, 6/16f, 13/16f, 7/16f, zFront, progressFrame, 13, packedLight, packedOverlay);

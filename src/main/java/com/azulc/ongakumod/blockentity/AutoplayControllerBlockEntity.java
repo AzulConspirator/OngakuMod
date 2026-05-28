@@ -12,6 +12,7 @@ import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.ContainerData;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -38,6 +39,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     private int tickCounter = 0;
     private PlaylistEntry currentlyPlayingEntry = null;
     private int currentPlaylistIndex = -1;
+    private long songStartTick = -1;
+    private int songDurationTicks = 0;
     public record PlaylistEntry( BlockPos rackPos,int slotIndex,ItemStack stack) {}
     public record DisplayPlaylistEntry( ItemStack stack, int count) {}
 
@@ -63,9 +66,6 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                         if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
                             ItemStack playing = jukebox.getTheItem();
                             if (playing.isEmpty()) yield -1;
-
-                            // Match the disc in the jukebox back to our list
-                            // buildCollapsedPlaylist() MUST include the jukebox item for this to work
                             List<DisplayPlaylistEntry> displayList = buildCollapsedPlaylist();
                             for (int i = 0; i < displayList.size(); i++) {
                                 if (ItemStack.isSameItem(displayList.get(i).stack(), playing)) {
@@ -79,11 +79,20 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                         {
                             BlockPos jukePos = findJukebox();
                             if (jukePos == null) yield -1;
-                            if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
-                                yield jukebox.getTheItem().isEmpty() ? 0 : 1;
+                            BlockState jukeState = level.getBlockState(jukePos);
+                            if (jukeState.is(Blocks.JUKEBOX)) {
+                                yield jukeState.getValue(JukeboxBlock.HAS_RECORD) ? 1 : 0;
                             }
                             yield -1;
                         }
+                case 3 ->  
+                {
+                    if (songStartTick == -1 || songDurationTicks <= 0) {yield 0;}
+                    long elapsed = level.getGameTime() - songStartTick;
+                    float progress = (float) elapsed / songDurationTicks;
+                    progress = Math.max(0.0f, Math.min(1.0f, progress));
+                    yield Math.round(progress * 12);
+                }
                 default -> 0;
             };
         }
@@ -97,7 +106,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         @Override
         public int getCount() 
         {
-            return 3;
+            return 4;
         }
     };
     //#endregion
@@ -185,7 +194,6 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
 
         BlockPos jukeboxPos = findJukebox();
-
         if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) 
         {
             ItemStack playing = jukebox.getTheItem();
@@ -199,6 +207,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         {
             this.data.set(2, -1); // -1 = No Jukebox Found
         }
+        
     }
     //#endregion
     //#region NBT Data Storage
@@ -211,7 +220,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                 .toArray();
 
         tag.putLongArray("LinkedRacks", positions);
-
+        tag.putLong("SongStart", songStartTick);
+        tag.putInt("SongDuration", songDurationTicks);
         tag.putInt("CurrentPlayingSlot", currentPlaylistIndex);
     }
 
@@ -226,13 +236,21 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         for (long posLong : positions) {
             linkedRackPositions.add(BlockPos.of(posLong));
         }
-
+        songStartTick = tag.getLong("SongStart");
+        songDurationTicks = tag.getInt("SongDuration");
         currentPlaylistIndex = tag.getInt("CurrentPlayingSlot");
     }
 
     //#endregion
     //#region Helpers 
+    
+    public long getSongStartTick() {
+        return songStartTick;
+    }
 
+    public int getSongDurationTicks() {
+        return songDurationTicks;
+    }
     private void finalizeReturn(DiscRackBlockEntity rack) {
         rack.setChanged();
         level.sendBlockUpdated(rack.getBlockPos(), rack.getBlockState(), rack.getBlockState(), 3);
@@ -299,43 +317,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
         return jukeboxPos;
     }
-    public int getCurrentProgressFrame()
-    {
-        if (level == null) return 0;
 
-        BlockPos jukeboxPos = findJukebox();
-        if (jukeboxPos == null) return 0;
-
-        if (level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
-            var Songplayer = jukebox.getSongPlayer();
-            
-            // If it's not playing or the song holder is missing, show frame 0 (empty)
-            if (!Songplayer.isPlaying() || Songplayer.getSong() == null) {
-                return 0;
-            }
-
-            // Current progress in ticks
-            long currentTicks = Songplayer.getTicksSinceSongStarted();
-            
-            // Total duration of the song in ticks
-            // JukeboxSong is a record containing 'lengthInTicks'
-            float totalTicks = jukebox.getSongPlayer().getSong().lengthInTicks();
-
-            if (totalTicks <= 0) return 0;
-
-            // Calculate the ratio (0.0 to 1.0)
-            float progress = (float) currentTicks / totalTicks;
-
-            // Map progress to our 13 frames (0 to 12)
-            // Using Math.round helps prevent the bar from feeling "late"
-            int frame = Math.round(progress * 12);
-
-            // Clamp the result to ensure we don't exceed texture bounds
-            return Math.max(0, Math.min(12, frame));
-        }
-
-        return 0;
-    }
     //#endregion
     //#region Main Packet
     private void returnDiscToRack(ItemStack existingDisc)
@@ -398,6 +380,9 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
         ItemStack discCopy = refreshedDisc.split(1);
         jukebox.setTheItem(discCopy);
+        this.songDurationTicks = jukebox.getSongPlayer().getSong().lengthInTicks();
+        this.songStartTick = level.getGameTime();
+
         currentPlaylistIndex = playlistIndex;
 
         currentlyPlayingEntry = new PlaylistEntry(
@@ -414,8 +399,10 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
         rack.setChanged();
         level.sendBlockUpdated(rack.getBlockPos(),rack.getBlockState(),rack.getBlockState(),3);
+        level.levelEvent(null, 1010, jukeboxPos, Item.getId(discCopy.getItem()));
         jukebox.setChanged();
         this.setChanged();
+        level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
         level.sendBlockUpdated(jukeboxPos,oldState,newState,3);
         broadcastPlaylistUpdate();
     }
@@ -427,11 +414,13 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
             // Use the helper ONLY. It handles returning disc, clearing item, and stopping sound.
             clearJukebox(jukebox, jukeboxPos);
-            
+            this.songStartTick = -1;
+            this.songDurationTicks = 0;
             jukebox.setChanged();
             this.setChanged();
             // Notify the client that the jukebox is now empty
             level.sendBlockUpdated(jukeboxPos, level.getBlockState(jukeboxPos), level.getBlockState(jukeboxPos), 3);
+            level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
             broadcastPlaylistUpdate();
         }      
     }
@@ -525,4 +514,5 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         );
     }
     //#endregion
+
 }
