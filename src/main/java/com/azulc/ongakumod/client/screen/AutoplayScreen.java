@@ -130,7 +130,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
             default -> 0xFF888888;
         };
         graphics.fill(this.leftPos + 10, this.topPos + 10, this.leftPos + 18, this.topPos + 18, indicatorColor);
-        graphics.drawString(this.font, "Link", this.leftPos + 22, this.topPos + 10, 0xFFFFFFFF, false);
+        graphics.drawString(this.font, "Sound Box", this.leftPos + 22, this.topPos + 10, 0xFFFFFFFF, false);
 
         // 2. Now Playing Logic
         int currentVisualIndex = this.menu.getData().get(1); // This is the Collapsed Index [cite: 29]

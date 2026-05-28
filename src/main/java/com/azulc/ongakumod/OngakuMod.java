@@ -6,6 +6,8 @@ import org.slf4j.Logger;
 
 import com.azulc.ongakumod.block.AutoplayControllerBlock;
 import com.azulc.ongakumod.block.DiscRackBlock;
+import com.azulc.ongakumod.block.DiscRackBoxBlock;
+import com.azulc.ongakumod.block.DiscRackWallBlock;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.azulc.ongakumod.container.AutoplayMenu;
@@ -23,6 +25,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.network.chat.Component;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -73,6 +76,11 @@ public class OngakuMod
     // Disc Rack
     public static final DeferredBlock<DiscRackBlock> DISC_RACK                                                                      = BLOCKS.register("disc_rack", () -> new DiscRackBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
     public static final DeferredItem<BlockItem> DISC_RACK_ITEM                                                                      = ITEMS.registerSimpleBlockItem("disc_rack", DISC_RACK);
+    public static final DeferredBlock<Block> DISC_BOX                                                                               = BLOCKS.register("disc_box", () -> new DiscRackBoxBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
+    public static final DeferredItem<BlockItem> DISC_BOX_ITEM                                                                       = ITEMS.registerSimpleBlockItem("disc_box", DISC_BOX);
+    public static final DeferredBlock<Block> DISC_WALL_RACK                                                                         = BLOCKS.register("disc_wallmount", () -> new DiscRackWallBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
+    public static final DeferredItem<BlockItem> DISC_WALL_RACK_ITEM                                                                 = ITEMS.registerSimpleBlockItem("disc_wallmount", DISC_WALL_RACK);
+    //
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DiscRackBlockEntity>> DISCRACK_BLOCK_ENTITY              = BLOCK_ENTITIES.register("discrack_block_entity", () -> BlockEntityType.Builder.of(DiscRackBlockEntity::new, BLOCKS.getEntries().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
     // Controller
     public static final DeferredBlock<Block> AUTOPLAY_CONTROLLER                                                                    = BLOCKS.register("autoplay_controller", () -> new AutoplayControllerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));//() -> new AutoplayControllerBlock(BlockBehaviour.Properties.copy(Blocks.JUKEBOX)));
@@ -81,7 +89,17 @@ public class OngakuMod
     //Wrench
     public static final DeferredItem<Item> TUNING_WRENCH                                                                            = ITEMS.register("tuning_wrench", () -> new TuningWrenchItem(new Item.Properties().stacksTo(1)));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<GlobalPos>> SAVED_LOCATION                           = DATA_COMPONENT_TYPES.register("saved_location", () -> DataComponentType.<GlobalPos>builder().persistent(GlobalPos.CODEC).networkSynchronized(GlobalPos.STREAM_CODEC).build());
-
+    // Creative Tab
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ONGAKU_TAB = CREATIVE_MODE_TABS.register("ongaku_tab", () -> CreativeModeTab.builder().title(Component.translatable("itemGroup.ongakumod")).icon(() -> 
+    new ItemStack(DISC_RACK_ITEM.get()))
+    .displayItems((parameters, output) -> {
+        output.accept(TUNING_WRENCH.get());
+        output.accept(AUTOPLAY_CONTROLLER_ITEM.get());
+        output.accept(DISC_RACK_ITEM.get());
+        output.accept(DISC_BOX_ITEM.get());
+        output.accept(DISC_WALL_RACK_ITEM.get());
+    }).build());
+    //
 
     public OngakuMod(IEventBus modEventBus, ModContainer modContainer) 
     {
@@ -94,7 +112,6 @@ public class OngakuMod
         DATA_COMPONENT_TYPES.register(modEventBus);
         NeoForge.EVENT_BUS.register(this);
         modEventBus.addListener(this::registerNetworking);
-        //modEventBus.addListener(this::addCreative);
         modEventBus.addListener(this::onAddReloadListeners);
         //modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         

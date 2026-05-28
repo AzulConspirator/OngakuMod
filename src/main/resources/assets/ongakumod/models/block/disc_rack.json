@@ -3,8 +3,8 @@
 	"credit": "Made with Blockbench",
 	"parent": "minecraft:block/block",
 	"textures": {
-		"particle": "block/spruce_log",
-		"spruce": "block/spruce_log"
+		"particle":  "minecraft:block/stripped_oak_log",
+		"spruce":  "minecraft:block/stripped_oak_log"
 	},
 	"elements": [
 		{

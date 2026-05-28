@@ -19,6 +19,7 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 public class OngakuModClient {
 
     public static ModelResourceLocation VinylModel = new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "block/vinyl"), "standalone");
+    public static ModelResourceLocation SleeveModel = new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "block/vinyl_sleeve"), "standalone");
     
     @SubscribeEvent
     public static void registerScreens(RegisterMenuScreensEvent event) {
@@ -29,6 +30,7 @@ public class OngakuModClient {
     @SubscribeEvent
     public static void onModelRegister(ModelEvent.RegisterAdditional event) {
         event.register(VinylModel);
+        event.register(SleeveModel);
     }
 
     @SubscribeEvent

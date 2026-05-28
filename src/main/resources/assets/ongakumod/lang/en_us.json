@@ -1,6 +1,10 @@
 {
   "itemGroup.ongakumod": "Ongaku",
-  "block.ongakumod.disc_rack": "Disc Rack",
+
   "block.ongakumod.autoplay_controller": "Sound Box",
-  "item.ongakumod.tuning_wrench": "Tuning Fork"
+  "item.ongakumod.tuning_wrench": "Tuning Fork",
+
+  "block.ongakumod.disc_rack": "Disc Rack",
+  "block.ongakumod.disc_box": "Disc Storage Box",
+  "block.ongakumod.disc_wallmount": "Disc Wall Mount"
 }

@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.stream.IntStream;
 
 import com.azulc.ongakumod.OngakuMod;
+import com.azulc.ongakumod.block.DiscRackWallBlock;
 import com.azulc.ongakumod.container.DiscContainer;
 
 public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implements WorldlyContainer 
@@ -29,7 +30,10 @@ public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implem
 
     public DiscRackBlockEntity(BlockPos pos, BlockState state) {
         super(OngakuMod.DISCRACK_BLOCK_ENTITY.get(), pos, state);
-        this.inventory = NonNullList.withSize(getContainerSize(), ItemStack.EMPTY);
+        // Dynamically set size based on the block type
+        int size = (state.getBlock() instanceof DiscRackWallBlock) ? 1 : DiscContainer.SIZE;
+        this.inventory = NonNullList.withSize(size, ItemStack.EMPTY);
+        //this.inventory = NonNullList.withSize(getContainerSize(), ItemStack.EMPTY);
     }
 
     private NonNullList<ItemStack> inventory;
@@ -38,14 +42,19 @@ public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implem
 
     @Override
     protected AbstractContainerMenu createMenu(int syncId, Inventory inventory) {
+        if (this.getContainerSize() == 1) return null; // No GUI for the wall mount
         return new DiscContainer(syncId, inventory, this);
     }
 
     @Override
     public int getContainerSize() {
+        return this.inventory.size();
+    }
+/*     @Override
+    public int getContainerSize() {
         return DiscContainer.SIZE;
     }
-
+ */
 
     @Override
     protected Component getDefaultName() {
