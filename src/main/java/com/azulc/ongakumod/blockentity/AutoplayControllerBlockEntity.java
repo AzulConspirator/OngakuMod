@@ -116,16 +116,11 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) 
         {
             BlockPos existingController = rack.getControllerPos();
-            if (existingController != null && !existingController.equals(worldPosition)) {
-                // Optional: Tell the old controller to remove this rack
-                if (level.getBlockEntity(existingController) instanceof AutoplayControllerBlockEntity oldController) {
-                    oldController.removeLinkedRack(rackPos);
-                }
-            }
-            rack.setControllerPos(worldPosition);
+            if (existingController != null && !existingController.equals(this.worldPosition)) {return false;}
+            rack.setControllerPos(this.worldPosition);
             this.linkedRackPositions.add(rackPos);
             this.setChanged();
-            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+            level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
             return true;
         }
         return false;

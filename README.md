@@ -35,7 +35,6 @@ The Sound Box works by physically moving discs between connected storage and a n
 
 Disc Displays can also be used independently without a Sound Box.
 
-
 ## Technical Notes
 
 - Music disc detection is based on the JUKEBOX_PLAYABLE item component
@@ -46,7 +45,7 @@ Disc Displays can also be used independently without a Sound Box.
 ## Credit
 
 - Made it Solo Babyyy!!
-- Inspired by [Sophisticated Storage by P3pp3rF1y](https://modrinth.com/mod/sophisticated-storage). this no relation to that mod or its dev. 
+- Inspired by [Sophisticated Storage by P3pp3rF1y](https://modrinth.com/mod/sophisticated-storage). this no relation to that mod or its dev.
 
 ## License
 

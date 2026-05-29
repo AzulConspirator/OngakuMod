@@ -5,7 +5,8 @@
 	"texture_size": [64, 64],
 	"textures": {
 		"0": "ongakumod:block/controller_front",
-		"5": "ongakumod:block/controller_base"
+		"5": "ongakumod:block/controller_base",
+		"particle": "ongakumod:block/controller_base"
 	},
 	"elements": [
 		{
