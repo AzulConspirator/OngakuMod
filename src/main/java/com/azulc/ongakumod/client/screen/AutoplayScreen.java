@@ -12,12 +12,15 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.network.PacketDistributor;
+
+import com.azulc.ongakumod.network.ManagePlaylistPayload;
 import com.azulc.ongakumod.network.PlayDiscPayload;
 import com.azulc.ongakumod.network.StopDiscPayload;
 
@@ -64,7 +67,8 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
     }
     
     @Override
-    protected void init() {
+    protected void init() 
+    {
         super.init();
 
         // Right Pane: Playlist (Starts 90px in)
@@ -92,6 +96,18 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
                 this.setSelectedDisc(this.musicList.getSelected().index);
             }
         }));
+
+        this.addRenderableWidget(new FlatButton(this.leftPos + 5, this.topPos + 105, 80, 20, 
+            Component.literal("Autoplay"), (button) -> {
+                PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY));
+            }) {
+            @Override
+            public Component getMessage() {
+                // Dynamically fetch the state from the synced ContainerData (index 4)
+                boolean enabled = AutoplayScreen.this.menu.getData().get(4) == 1;
+                return Component.literal("Autoplay: " + (enabled ? "ON" : "OFF"));
+            }
+        });
     }
 
     public AutoplayMenu getMenu() 

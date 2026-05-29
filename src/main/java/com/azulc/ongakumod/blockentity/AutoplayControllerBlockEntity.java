@@ -5,11 +5,15 @@ import net.minecraft.core.Direction;
 import net.minecraft.world.level.block.state.BlockState;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
@@ -23,6 +27,7 @@ import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
@@ -43,6 +48,9 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     private int songDurationTicks = 0;
     public record PlaylistEntry( BlockPos rackPos,int slotIndex,ItemStack stack) {}
     public record DisplayPlaylistEntry( ItemStack stack, int count) {}
+    private boolean autoplayEnabled = false;
+    private final List<Item> customQueueOrder = new ArrayList<>();
+    private final Set<Item> excludedTracks = new HashSet<>();
 
     public AutoplayControllerBlockEntity(BlockPos pos, BlockState state) 
     {
@@ -93,6 +101,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                     progress = Math.max(0.0f, Math.min(1.0f, progress));
                     yield Math.round(progress * 12);
                 }
+                case 4 -> autoplayEnabled ? 1 : 0;
                 default -> 0;
             };
         }
@@ -102,11 +111,19 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             if (index == 1) {
                 currentPlaylistIndex = value;
             }
+            if (index == 4) {
+                autoplayEnabled = (value == 1);
+                // CRITICAL: Mark for sync so the UI button updates for everyone
+                AutoplayControllerBlockEntity.this.setChanged();
+                if (level != null && !level.isClientSide) {
+                    level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+                }
+            }
         }
         @Override
         public int getCount() 
         {
-            return 4;
+            return 5;
         }
     };
     //#endregion
@@ -166,12 +183,45 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     }
     //#endregion
     //#region Server Tick
-    public static void serverTick(Level level, BlockPos pos, BlockState state, AutoplayControllerBlockEntity entity) {
+    public static void serverTick(Level level, BlockPos pos, BlockState state, AutoplayControllerBlockEntity entity) 
+    {
         entity.tickCounter++;
         // Run validation every 20 ticks (1 second) to save performance
         if (entity.tickCounter % 20 == 0) {
             entity.validateAndProcess(level,pos);
         }
+        // 2. The Autoplay Engine (Runs every tick)
+        if (entity.autoplayEnabled) {
+            // CASE 1: Something is playing, wait for it to end
+            if (entity.songStartTick != -1 && entity.songDurationTicks > 0) {
+                long elapsed = level.getGameTime() - entity.songStartTick;
+                if (elapsed >= entity.songDurationTicks + 10) {
+                    entity.playNextInQueue();
+                }
+            } 
+            // CASE 2: FIX - Nothing is playing, but Autoplay is ON. Start the first disc!
+            else if (entity.songStartTick == -1) {
+                entity.playNextInQueue();
+            }
+        }
+    }
+
+    private void playNextInQueue() {
+        List<PlaylistEntry> fullPlaylist = buildPlaylist();
+        if (fullPlaylist.isEmpty()) return;
+        int nextIndex = this.currentPlaylistIndex;
+        int attempts = 0;
+        while (attempts < fullPlaylist.size()) {
+            nextIndex = (nextIndex + 1) % fullPlaylist.size();
+            attempts++;
+
+            ItemStack nextStack = fullPlaylist.get(nextIndex).stack();
+            if (!excludedTracks.contains(nextStack.getItem())) {
+                tryPlayDisc(nextIndex);
+                return;
+            }
+        }
+        this.stopAndReturnDisc();
     }
 
     private void validateAndProcess(Level level,BlockPos pos) 
@@ -223,6 +273,20 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         tag.putLong("SongStart", songStartTick);
         tag.putInt("SongDuration", songDurationTicks);
         tag.putInt("CurrentPlayingSlot", currentPlaylistIndex);
+        tag.putBoolean("autoplayEnabled", this.autoplayEnabled);
+        // Save Queue as a List of Strings (Registry Names)
+        ListTag queueTag = new ListTag();
+        for (Item item : customQueueOrder) {
+            queueTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
+        }
+        tag.put("queueOrder", queueTag);
+
+        // Save Exclusions
+        ListTag exclusionTag = new ListTag();
+        for (Item item : excludedTracks) {
+            exclusionTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
+        }
+        tag.put("excludedTracks", exclusionTag);
     }
 
     @Override
@@ -239,11 +303,33 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         songStartTick = tag.getLong("SongStart");
         songDurationTicks = tag.getInt("SongDuration");
         currentPlaylistIndex = tag.getInt("CurrentPlayingSlot");
+        this.autoplayEnabled = tag.getBoolean("autoplayEnabled");
+
+        customQueueOrder.clear();
+        ListTag queueTag = tag.getList("queueOrder", 8); // 8 is the ID for StringTag
+        for (int i = 0; i < queueTag.size(); i++) {
+            ResourceLocation rl = ResourceLocation.parse(queueTag.getString(i));
+            customQueueOrder.add(BuiltInRegistries.ITEM.get(rl));
+        }
+
+        excludedTracks.clear();
+        ListTag exclusionTag = tag.getList("excludedTracks", 8);
+        for (int i = 0; i < exclusionTag.size(); i++) {
+            ResourceLocation rl = ResourceLocation.parse(exclusionTag.getString(i));
+            excludedTracks.add(BuiltInRegistries.ITEM.get(rl));
+        }
     }
 
     //#endregion
     //#region Helpers 
-    
+    public boolean isItemExcluded(Item item)
+    {
+        return this.excludedTracks.contains(item);
+    }
+    public List<Item> getCustomQueue() {
+        return this.customQueueOrder;
+    }
+
     public long getSongStartTick() {
         return songStartTick;
     }
@@ -430,49 +516,34 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         List<PlaylistEntry> playlist = new ArrayList<>();
         if (level == null) return playlist;
 
-        // 1. Add discs from Racks
+        // Physical scan of racks
         for (BlockPos rackPos : linkedRackPositions) {
             if (!level.isLoaded(rackPos)) continue;
-            BlockEntity be = level.getBlockEntity(rackPos);
-            if (!(be instanceof DiscRackBlockEntity rack)) continue;
-            for (int i = 0; i < rack.getContainerSize(); i++) {
-                ItemStack stack = rack.getItem(i);
-                if (!stack.isEmpty()) {
-                    playlist.add(new PlaylistEntry(rackPos, i, stack.copy()));
+            if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) {
+                for (int i = 0; i < rack.getContainerSize(); i++) {
+                    ItemStack stack = rack.getItem(i);
+                    if (!stack.isEmpty()) {
+                        playlist.add(new PlaylistEntry(rackPos, i, stack.copy()));
+                    }
                 }
             }
         }
 
-        // 2. ADD THIS: Include the disc currently in the jukebox
-        BlockPos jukePos = findJukebox();
-        if (jukePos != null && level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
-            ItemStack inJukebox = jukebox.getTheItem();
-            if (!inJukebox.isEmpty()) {
-                // Check if this disc is already accounted for via currentlyPlayingEntry
-                boolean alreadyInList = false;
-                if (currentlyPlayingEntry != null) {
-                    // Check if the slot it 'came from' is currently empty (it should be)
-                    // If it's already in our loop above, we don't add it again.
-                    // However, if the rack is FULL, the loop above won't find it.
-                    alreadyInList = playlist.stream().anyMatch(e -> 
-                        e.rackPos().equals(currentlyPlayingEntry.rackPos()) && 
-                        e.slotIndex() == currentlyPlayingEntry.slotIndex());
-                }
-
-                if (!alreadyInList) {
-                    // Use a dummy position (worldPosition) if it didn't come from a rack
-                    // This ensures it shows up in the UI list
-                    BlockPos sourcePos = (currentlyPlayingEntry != null) ? currentlyPlayingEntry.rackPos() : worldPosition;
-                    int sourceSlot = (currentlyPlayingEntry != null) ? currentlyPlayingEntry.slotIndex() : -1;
-                    playlist.add(new PlaylistEntry(sourcePos, sourceSlot, inJukebox.copy()));
-                }
-            }
+        // Add the disc currently in the jukebox so it doesn't "vanish" from the list
+        if (this.currentlyPlayingEntry != null) {
+            playlist.add(this.currentlyPlayingEntry);
         }
-        // Sort remains the same
+
+        // SORT using customQueueOrder
         playlist.sort((a, b) -> {
-            int posCompare = a.rackPos().compareTo(b.rackPos());
-            return posCompare != 0 ? posCompare : Integer.compare(a.slotIndex(), b.slotIndex());
+            int indexA = customQueueOrder.indexOf(a.stack().getItem());
+            int indexB = customQueueOrder.indexOf(b.stack().getItem());
+            if (indexA != -1 && indexB != -1) return Integer.compare(indexA, indexB);
+            if (indexA != -1) return -1;
+            if (indexB != -1) return 1;
+            return a.rackPos().compareTo(b.rackPos());
         });
+
         return playlist;
     }
 
@@ -498,21 +569,58 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         return new ArrayList<>(map.values());
     }
 
+    // 3. Update broadcast to use the SORTED list
     public void broadcastPlaylistUpdate() {
-        if (level == null || level.isClientSide) {
-            return;
-        }
-        List<ItemStack> currentDiscs = new ArrayList<>();
-        for (PlaylistEntry entry : buildPlaylist()) {
-            currentDiscs.add(entry.stack().copy());
-        }
+    if (level == null || level.isClientSide) return;
 
-        PacketDistributor.sendToPlayersTrackingChunk(
-                (ServerLevel) level,
-                new ChunkPos(worldPosition),
-                new SyncPlaylistPayload(currentDiscs)
-        );
+    List<ItemStack> sortedStacks = new ArrayList<>();
+    for (PlaylistEntry entry : buildPlaylist()) {
+        sortedStacks.add(entry.stack());
+    }
+
+    PacketDistributor.sendToPlayersTrackingChunk(
+        (ServerLevel) level, 
+        new ChunkPos(worldPosition), 
+        new SyncPlaylistPayload(sortedStacks)
+    );
+}
+
+    public void toggleAutoplay() 
+    {
+        this.autoplayEnabled = !this.autoplayEnabled;
+        // Mark as changed so it saves to disk
+        this.setChanged();
+        
+        // Sync to clients so the UI button updates immediately
+        if (level != null && !level.isClientSide) {
+            level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
+        }
+    }
+    
+    public void moveInQueue(Item item, int direction) {
+        int index = customQueueOrder.indexOf(item);
+        
+        // FIX: If the item is new to the system, add it to the end of the queue first
+        if (index == -1) {
+            customQueueOrder.add(item);
+            index = customQueueOrder.size() - 1;
+        }
+        int newIndex = index + direction;
+        // Prevent moving out of bounds (above top or below bottom)
+        if (newIndex >= 0 && newIndex < customQueueOrder.size()) {
+            Collections.swap(customQueueOrder, index, newIndex);
+            // CRITICAL: Immediately broadcast the new order to the UI
+            this.setChanged();
+            this.broadcastPlaylistUpdate();
+        }
+    }
+
+    public void toggleExclusion(Item item) {
+        if (excludedTracks.contains(item)) {
+            excludedTracks.remove(item);
+        } else {
+            excludedTracks.add(item);
+        }
     }
     //#endregion
-
 }

@@ -14,6 +14,7 @@ import com.azulc.ongakumod.container.AutoplayMenu;
 import com.azulc.ongakumod.container.DiscContainer;
 import com.azulc.ongakumod.item.TuningWrenchItem;
 import com.azulc.ongakumod.network.ClientPayloadHandler;
+import com.azulc.ongakumod.network.ManagePlaylistPayload;
 import com.azulc.ongakumod.network.PlayDiscPayload;
 import com.azulc.ongakumod.network.ServerPayloadHandler;
 import com.azulc.ongakumod.network.StopDiscPayload;
@@ -152,6 +153,11 @@ public class OngakuMod
             SyncPlaylistPayload.TYPE,
             SyncPlaylistPayload.STREAM_CODEC,
             ClientPayloadHandler::handleSyncPlaylist
+        );
+        registrar.playToServer(
+            ManagePlaylistPayload.TYPE,
+            ManagePlaylistPayload.STREAM_CODEC,
+            ServerPayloadHandler::handlePlaylistAction
         );
     }
 }
