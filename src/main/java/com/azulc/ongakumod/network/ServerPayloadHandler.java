@@ -26,7 +26,7 @@ public class ServerPayloadHandler {
         context.enqueueWork(() -> {
             if (context.player() instanceof ServerPlayer player) {
                 if (player.level().getBlockEntity(payload.controllerPos()) instanceof AutoplayControllerBlockEntity controller) {
-                    controller.stopAndReturnDisc();
+                    controller.StopJukebox();
                 }
             }
         });
@@ -42,6 +42,7 @@ public class ServerPayloadHandler {
                     case EXCLUDE -> controller.toggleExclusion(item);
                     case MOVE_UP -> controller.moveInQueue(item, -1);
                     case MOVE_DOWN -> controller.moveInQueue(item, 1);
+                    case SKIP -> controller.skipTrack();
                 }
                 
                 // This is the key: after moving or excluding, tell the UI to refresh!

@@ -58,29 +58,25 @@ public class TuningWrenchItem extends Item {
 
             // Attempt to find the saved controller in the world
             BlockEntity savedBE = level.getBlockEntity(saved.pos());
-            if (savedBE instanceof AutoplayControllerBlockEntity controller) {
-                // Tell the controller to add THIS rack
-                boolean added = controller.addLinkedRack(clickedPos);
-                
-                if (added) {
-                    context.getPlayer().displayClientMessage(Component.literal("Rack Linked to Controller!"), true);
+            if (savedBE instanceof AutoplayControllerBlockEntity controller) 
+            {
+                // The controller now handles the logic for:
+                // - Linking a fresh rack
+                // - Unlinking if already connected
+                // - Hijacking if linked to another controller
+                boolean nowLinked = controller.addLinkedRack(clickedPos);
+                if (nowLinked) {
+                    context.getPlayer().displayClientMessage(Component.literal("Rack Linked!"), true);
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.0f, 1.2f);
-                    
-                    // Crucial for rendering: The controller needs to sync its new list to clients
-                    controller.setChanged();
-                    level.sendBlockUpdated(saved.pos(), controller.getBlockState(), controller.getBlockState(), 3);
                 } else {
-                    controller.removeLinkedRack(clickedPos);
                     context.getPlayer().displayClientMessage(Component.literal("Disconnected the Rack"), true);
+                    level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 1.0f, 0.8f);
                 }
+                // Ensure the Controller updates its UI playlist for any nearby players
+                controller.broadcastPlaylistUpdate();
                 return InteractionResult.SUCCESS;
-            } else {
-                context.getPlayer().displayClientMessage(Component.literal("Saved Controller not found!"), true);
-                stack.remove(OngakuMod.SAVED_LOCATION.get()); // Clean up if it was broken
-                return InteractionResult.FAIL;
             }
         }
-
         return InteractionResult.PASS;
     }
 }

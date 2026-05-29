@@ -2,7 +2,6 @@ package com.azulc.ongakumod.client.screen.widget;
 
 import java.util.List;
 
-import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
 
@@ -11,6 +10,7 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.ObjectSelectionList;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.Item;
@@ -34,12 +34,18 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         // Leave empty to suppress vanilla outline.
     }
     
-    public void refreshList(List<ItemStack> discs) {
+    public void refreshList(List<ItemStack> discs) 
+    {
+       // 1. Remember what was selected by its index or Item type
+        MusicEntry lastSelected = this.getSelected();
+        int savedIndex = (lastSelected != null) ? lastSelected.index : -1;
+
         this.clearEntries();
         // 1. Group the discs
         java.util.Map<net.minecraft.world.item.Item, CollapsedMusicEntry> groupedDiscs = new java.util.LinkedHashMap<>();
 
-        for (int i = 0; i < discs.size(); i++) {
+        for (int i = 0; i < discs.size(); i++) 
+        {
             ItemStack stack = discs.get(i);
             if (stack.isEmpty()) continue;
 
@@ -51,9 +57,14 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
                 groupedDiscs.put(item, new CollapsedMusicEntry(stack, 1, i));
             }
         }
-        // 2. Add the grouped results to the UI list
-        for (CollapsedMusicEntry collapsed : groupedDiscs.values()) {
-            this.addEntry(new MusicEntry(collapsed.stack(), collapsed.originalIndex(), collapsed.count()));
+        for (CollapsedMusicEntry collapsed : groupedDiscs.values()) 
+        {
+            MusicEntry newEntry = new MusicEntry(collapsed.stack(), collapsed.originalIndex(), collapsed.count());
+            this.addEntry(newEntry);
+            // 2. Restore the selection if it matches the saved index
+            if (collapsed.originalIndex() == savedIndex) {
+                this.setSelected(newEntry);
+            }
         }
     }
 
@@ -91,6 +102,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int bgRight = x + rowWidth - 4;
             int bgBottom = y + height - 1 ; // Subtracting 2 for equal padding/spacing between entries
             boolean isExcluded = screen.getMenu().getBlockEntity().isItemExcluded(this.disc.getItem());
+            boolean isSelected = MusicListWidget.this.getSelected() == this;
             int mainColor = isExcluded ? 0xFF666666 : 0xFFFFFFFF;
             int subColor = isExcluded ? 0xFF444444 : 0xFFAAAAAA;
             // 2. Highlight Logic
@@ -110,6 +122,9 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             if (isNowPlaying) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x4455FF55); // Subtle Green
                 graphics.fill(x, y, x + 2, bgBottom, 0xFF55FF55);   // Left Accent bar
+            }else if (isSelected) {
+                graphics.fill(x, y, bgRight, bgBottom, 0x33FFFFFF); // Light Blue/White selection
+                graphics.fill(x, y, x + 2, bgBottom, 0xFFFFFFFF);   // Left bar
             } else if (isHovered) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x22FFFFFF); // Subtle Hover
             }
@@ -154,71 +169,63 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             {
                 graphics.drawString(Minecraft.getInstance().font, disc.getHoverName(), textX, y + 6, mainColor, false);
             }
+        // 3. Render Shrunken Control Buttons (12x12 icons)
             if (isHovered) {
-                int rightEdge = x + getRowWidth() - 5;
-                // 1. Exclude Button (X)
-                boolean hoverX = mouseX >= rightEdge - 15 && mouseX <= rightEdge && mouseY >= y && mouseY <= y + 15;
-                graphics.drawString(Minecraft.getInstance().font, "X", rightEdge - 10, y + 4, hoverX ? 0xFFFF5555 : 0xFFAAAAAA, false);
-                // 2. Move Up Button (^)
-                boolean hoverUp = mouseX >= rightEdge - 30 && mouseX <= rightEdge - 15 && mouseY >= y && mouseY <= y + 15;
-                graphics.drawString(Minecraft.getInstance().font, "^", rightEdge - 25, y + 4, hoverUp ? 0xFFFFFFFF : 0xFFAAAAAA, false);
-                // 3. Move Down Button (v)
-                boolean hoverDown = mouseX >= rightEdge - 45 && mouseX <= rightEdge - 30 && mouseY >= y && mouseY <= y + 15;
-                graphics.drawString(Minecraft.getInstance().font, "v", rightEdge - 40, y + 4, hoverDown ? 0xFFFFFFFF : 0xFFAAAAAA, false);
+                int rightEdge = x + rowWidth - 10;
+                int iconY = y+2; // Centered vertically in a 20px row
+                
+                // UP (Index 4)
+                renderScaledIcon(graphics, rightEdge - 42, iconY, 4);
+                // DOWN (Index 5)
+                renderScaledIcon(graphics, rightEdge - 27, iconY, 5);
+                // EXCLUDE (Index 6/7)
+                renderScaledIcon(graphics, rightEdge - 12, iconY, isExcluded ? 7 : 6);
             }
+        }
+        private void renderScaledIcon(GuiGraphics graphics, int x, int y, int iconIndex) {
+            // Parameters: texture, destX, destY, destWidth, destHeight, sourceU, sourceV, sourceWidth, sourceHeight, texWidth, texHeight
+            graphics.blit(AutoplayScreen.BUTTON_ICONS, x, y, 12, 12, iconIndex * 16, 0, 16, 16, 128, 16);
         }
 
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            // 1. Get this entry's current position in the visible list
             int listIndex = MusicListWidget.this.children().indexOf(this);
             if (listIndex == -1) return false;
 
-            // 2. Calculate the top (y) and left (x) of this specific row
             int rowTop = MusicListWidget.this.getRowTop(listIndex);
             int rowLeft = MusicListWidget.this.getRowLeft();
-            int rowWidth = MusicListWidget.this.getRowWidth();
-            int rightEdge = rowLeft + rowWidth - 5;
+            int rightEdge = MusicListWidget.this.getRowLeft() + MusicListWidget.this.getRowWidth() - 10;
 
-            // 3. Check if the click is within the vertical bounds of THIS entry
-            // (This ensures clicking one row doesn't trigger buttons on the row above/below)
-            if (mouseY < rowTop || mouseY > rowTop + MusicListWidget.this.itemHeight) {
-                return false;
-            }
+            if (mouseY < rowTop || mouseY > rowTop + MusicListWidget.this.itemHeight) return false;
+            // Tightened hitboxes for the 12x12 buttons
+            String registryName = BuiltInRegistries.ITEM.getKey(this.disc.getItem()).toString();
+            BlockPos pos = screen.getMenu().getBlockPos();
 
-            // 4. Hitbox Detection for Buttons
-            // Exclude Button (X)
-            if (mouseX >= rightEdge - 15 && mouseX <= rightEdge) {
-                PacketDistributor.sendToServer(new ManagePlaylistPayload(
-                    screen.getMenu().getBlockPos(), 
-                    BuiltInRegistries.ITEM.getKey(this.disc.getItem()).toString(), 
-                    ManagePlaylistPayload.Action.EXCLUDE
-                ));
+            if (mouseX >= rightEdge - 12 && mouseX <= rightEdge) {
+                sendAction(pos, registryName, ManagePlaylistPayload.Action.EXCLUDE);
                 return true;
             } 
-            // Move Up Button (^)
-            else if (mouseX >= rightEdge - 30 && mouseX <= rightEdge - 15) {
-                PacketDistributor.sendToServer(new ManagePlaylistPayload(
-                    screen.getMenu().getBlockPos(), 
-                    BuiltInRegistries.ITEM.getKey(this.disc.getItem()).toString(), 
-                    ManagePlaylistPayload.Action.MOVE_UP
-                ));
+            else if (mouseX >= rightEdge - 27 && mouseX <= rightEdge - 15) {
+                sendAction(pos, registryName, ManagePlaylistPayload.Action.MOVE_DOWN);
                 return true;
             } 
-            // Move Down Button (v)
-            else if (mouseX >= rightEdge - 45 && mouseX <= rightEdge - 30) {
-                PacketDistributor.sendToServer(new ManagePlaylistPayload(
-                    screen.getMenu().getBlockPos(), 
-                    BuiltInRegistries.ITEM.getKey(this.disc.getItem()).toString(), 
-                    ManagePlaylistPayload.Action.MOVE_DOWN
-                ));
+            else if (mouseX >= rightEdge - 42 && mouseX <= rightEdge - 30) {
+                sendAction(pos, registryName, ManagePlaylistPayload.Action.MOVE_UP);
                 return true;
             }
+            if (mouseX >= rowLeft && mouseX < rightEdge - 45) {
+                MusicListWidget.this.setSelected(this);
+                int jukeStatus = screen.getMenu().getData().get(2);
+                if (jukeStatus == 1) {
+                    screen.setSelectedDisc(this.index);
+                }
+                return true;
+            }
+            return false;
+        }
 
-            // Default: Select the entry
-            MusicListWidget.this.setSelected(this);
-            screen.setSelectedDisc(this.index);
-            return true;
+        private void sendAction(BlockPos pos, String name, ManagePlaylistPayload.Action action) {
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(pos, name, action));
         }
 
         @Override

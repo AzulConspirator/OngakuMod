@@ -2,6 +2,7 @@ package com.azulc.ongakumod.client.screen;
 
 import java.util.List;
 
+import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.client.screen.widget.MusicListWidget;
 import com.azulc.ongakumod.container.AutoplayMenu;
 
@@ -12,8 +13,8 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
@@ -26,6 +27,7 @@ import com.azulc.ongakumod.network.StopDiscPayload;
 
 public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu> 
 {
+    public static final ResourceLocation BUTTON_ICONS = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/gui/controller.png");
     private MusicListWidget musicList;
 
     public AutoplayScreen(AutoplayMenu menu, Inventory inv, Component title) {
@@ -55,10 +57,6 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
     @Override
     protected void containerTick() {
         super.containerTick();
-        // Re-evaluates container changes 20 times a second and pushes live updates down to your widget rows
-        if (this.musicList != null) {
-            this.musicList.refreshList(this.menu.getSyncedDiscs());
-        }
     }
     
     public static List<Component> getDiscDescription(ItemStack stack, ClientLevel level,LocalPlayer player,TooltipFlag Tooltip) 
@@ -70,44 +68,48 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
     protected void init() 
     {
         super.init();
-
         // Right Pane: Playlist (Starts 90px in)
-        // 1. Create the widget. 
-        // We pass 0 for width/height/top/itemHeight initially because setRectangle will handle it.
-        // Or keep them as placeholders.
         this.musicList = new MusicListWidget(this, 140, 140, this.topPos + 10, 20);
-
-        // 2. Use setRectangle to define the EXACT bounds and position.
-        // This replaces setX, setY, and manual width/height adjustments.
         this.musicList.setRectangle(140, 140, this.leftPos + 95, this.topPos + 10);
-
-        // 3. Add to the screen
         this.addRenderableWidget(this.musicList);
         this.musicList.refreshList(this.menu.getSyncedDiscs());
 
         // Left Pane: Custom Flat Buttons
-        this.addRenderableWidget(new FlatButton(this.leftPos + 5, this.topPos + 130, 38, 20, Component.literal("■"), (button) -> {
+        // STOP (Index 2: Stop/Pause)
+        int startX = this.leftPos + 4;
+        int startY = this.topPos + 130;
+        int spacing = 21; // 20px button + 1px gap
+
+        // 1. STOP
+        this.addRenderableWidget(new IconButton(startX, startY, 20, 20, 2, false, 
+            Component.literal("Stop"), (b) -> {
             PacketDistributor.sendToServer(new StopDiscPayload(this.menu.getBlockPos()));
         }));
 
-        this.addRenderableWidget(new FlatButton(this.leftPos + 47, this.topPos + 130, 38, 20, Component.literal("►"), (button) -> {
-            if (this.musicList.getSelected() != null) 
-            { 
+        // 2. PLAY
+        this.addRenderableWidget(new IconButton(startX + spacing, startY, 20, 20, 0, false, 
+            Component.literal("Play"), (b) -> {
+                MusicListWidget.MusicEntry selected = this.musicList.getSelected();
+                if (selected != null) {
+                    // This is where the actual packet is sent
+                    this.setSelectedDisc(selected.index); 
+                } 
+/*             if (this.musicList.getSelected() != null) {
                 this.setSelectedDisc(this.musicList.getSelected().index);
-            }
+            } */
         }));
 
-        this.addRenderableWidget(new FlatButton(this.leftPos + 5, this.topPos + 105, 80, 20, 
-            Component.literal("Autoplay"), (button) -> {
-                PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY));
-            }) {
-            @Override
-            public Component getMessage() {
-                // Dynamically fetch the state from the synced ContainerData (index 4)
-                boolean enabled = AutoplayScreen.this.menu.getData().get(4) == 1;
-                return Component.literal("Autoplay: " + (enabled ? "ON" : "OFF"));
-            }
-        });
+        // 3. SKIP
+        this.addRenderableWidget(new IconButton(startX + (spacing * 2), startY, 20, 20, 1, false, 
+            Component.literal("Skip"), (b) -> {
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.SKIP));
+        }));
+
+        // 4. AUTOPLAY (Indicator in corner)
+        this.addRenderableWidget(new IconButton(startX + (spacing * 3), startY, 20, 20, 3, true, 
+            Component.literal("Autoplay"), (b) -> {
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY));
+        }));
     }
 
     public AutoplayMenu getMenu() 
@@ -186,7 +188,38 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         }
         super.render(graphics, mouseX, mouseY, partialTick); 
     }
-        
+    
+    public static class IconButton extends Button {
+        protected final int iconIndex;
+        protected final boolean isAutoplayButton;
+
+        public IconButton(int x, int y, int width, int height, int iconIndex, boolean isAutoplay, Component tooltip, OnPress onPress) {
+            super(x, y, width, height, Component.empty(), onPress, Button.DEFAULT_NARRATION);
+            this.iconIndex = iconIndex;
+            this.isAutoplayButton = isAutoplay;
+            if (tooltip != null) {
+                this.setTooltip(net.minecraft.client.gui.components.Tooltip.create(tooltip));
+            }
+        }
+
+        @Override
+        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
+            int bgColor = this.isHoveredOrFocused() ? 0x66FFFFFF : 0x66000000;
+            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
+
+            // Draw Icon
+            int u = this.iconIndex * 16;
+            graphics.blit(BUTTON_ICONS, this.getX() + (this.width - 16) / 2, this.getY() + (this.height - 16) / 2, u, 0, 16, 16, 128, 16);
+
+            // Autoplay Corner Indicator (Top Right)
+            if (isAutoplayButton) {
+                // Check state from menu data
+                boolean enabled = ((AutoplayScreen)Minecraft.getInstance().screen).getMenu().getData().get(4) == 1;
+                int color = enabled ? 0xFF55FF55 : 0xFFFF5555; // Green / Red
+                graphics.fill(this.getX() + this.width - 5, this.getY() + 1, this.getX() + this.width - 1, this.getY() + 5, color);
+            }
+        }
+    }
     public static class FlatButton extends Button 
     {
 

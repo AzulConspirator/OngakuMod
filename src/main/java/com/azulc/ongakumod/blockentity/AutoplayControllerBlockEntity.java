@@ -42,13 +42,14 @@ public class AutoplayControllerBlockEntity extends BlockEntity
 {
     private final Set<BlockPos> linkedRackPositions = new HashSet<>();
     private int tickCounter = 0;
-    private PlaylistEntry currentlyPlayingEntry = null;
+    public PlaylistEntry currentlyPlayingEntry = null;
     private int currentPlaylistIndex = -1;
     private long songStartTick = -1;
     private int songDurationTicks = 0;
     public record PlaylistEntry( BlockPos rackPos,int slotIndex,ItemStack stack) {}
     public record DisplayPlaylistEntry( ItemStack stack, int count) {}
     private boolean autoplayEnabled = false;
+    public int cachedStatus = 0;
     private final List<Item> customQueueOrder = new ArrayList<>();
     private final Set<Item> excludedTracks = new HashSet<>();
 
@@ -59,47 +60,32 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     //#region Container Data
     public final ContainerData data = new ContainerData() 
     {
-        
         @Override
         public int get(int index) 
         {
-            
             return switch (index) 
             {
                 case 0 -> linkedRackPositions.isEmpty() ? 0 : 1;
                 case 1 ->
-                    {
-                        BlockPos jukePos = findJukebox();
-                        if (jukePos == null) yield -1;
-                        if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
-                            ItemStack playing = jukebox.getTheItem();
-                            if (playing.isEmpty()) yield -1;
-                            List<DisplayPlaylistEntry> displayList = buildCollapsedPlaylist();
-                            for (int i = 0; i < displayList.size(); i++) {
-                                if (ItemStack.isSameItem(displayList.get(i).stack(), playing)) {
-                                    yield i;
-                                }
+                {
+                    BlockPos jukePos = findJukebox();
+                    if (jukePos == null) yield -1;
+                    if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
+                        ItemStack playing = jukebox.getTheItem();
+                        if (playing.isEmpty()) yield -1;
+                        List<DisplayPlaylistEntry> displayList = buildCollapsedPlaylist();
+                        for (int i = 0; i < displayList.size(); i++) {
+                            if (ItemStack.isSameItem(displayList.get(i).stack(), playing)) {
+                                yield i;
                             }
                         }
-                        yield -1;
                     }
-                case 2 -> 
-                        {
-                            BlockPos jukePos = findJukebox();
-                            if (jukePos == null) yield -1;
-                            BlockState jukeState = level.getBlockState(jukePos);
-                            if (jukeState.is(Blocks.JUKEBOX)) {
-                                yield jukeState.getValue(JukeboxBlock.HAS_RECORD) ? 1 : 0;
-                            }
-                            yield -1;
-                        }
+                    yield -1;
+                }
+                case 2 -> cachedStatus;
                 case 3 ->  
                 {
-                    if (songStartTick == -1 || songDurationTicks <= 0) {yield 0;}
-                    long elapsed = level.getGameTime() - songStartTick;
-                    float progress = (float) elapsed / songDurationTicks;
-                    progress = Math.max(0.0f, Math.min(1.0f, progress));
-                    yield Math.round(progress * 12);
+                    yield 0;
                 }
                 case 4 -> autoplayEnabled ? 1 : 0;
                 default -> 0;
@@ -110,6 +96,14 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         {
             if (index == 1) {
                 currentPlaylistIndex = value;
+            }
+            if (index == 2) {
+                cachedStatus = value;
+                // Trigger a block update to sync NBT to the client renderer
+                AutoplayControllerBlockEntity.this.setChanged();
+                if (level != null && !level.isClientSide) {
+                    level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
+                }
             }
             if (index == 4) {
                 autoplayEnabled = (value == 1);
@@ -130,27 +124,56 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     //#region Linked Rack Handler
     public boolean addLinkedRack(BlockPos rackPos) 
     {
-        if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) 
-        {
-            BlockPos existingController = rack.getControllerPos();
-            if (existingController != null && !existingController.equals(this.worldPosition)) {return false;}
-            rack.setControllerPos(this.worldPosition);
-            this.linkedRackPositions.add(rackPos);
-            this.setChanged();
-            level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
-            return true;
-        }
-        return false;
+        if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) {
+                BlockPos existingController = rack.getControllerPos();
+                // CASE 1: TOGGLE OFF - If already linked to THIS controller, disconnect it
+                if (this.worldPosition.equals(existingController)) {
+                    this.removeLinkedRack(rackPos);
+                    return false; // Return false to indicate "Disconnected"
+                }
+                // CASE 2: REPLACE - If linked to a DIFFERENT controller, force a transfer
+                if (existingController != null) {
+                    if (level.getBlockEntity(existingController) instanceof AutoplayControllerBlockEntity oldController) {
+                        // Tell the OLD controller to forget this rack
+                        oldController.removeLinkedRack(rackPos);
+                    }
+                }
+                // CASE 3: CONNECT - Establish the new link
+                rack.setControllerPos(this.worldPosition);
+                this.linkedRackPositions.add(rackPos);
+                // Finalize sync
+                this.setChanged();
+                level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
+                rack.setChanged();
+                level.sendBlockUpdated(rackPos, rack.getBlockState(), rack.getBlockState(), 3);
+                return true; 
+            }
+            return false;
     }
 
-    public void removeLinkedRack(BlockPos pos) {
-        this.linkedRackPositions.remove(pos);
-        this.buildPlaylist(); 
-        if (level != null && !level.isClientSide) {
-            level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
-            broadcastPlaylistUpdate(); 
+    public void removeLinkedRack(BlockPos rackPos) {
+    // 1. Remove from Controller's memory
+        boolean removed = this.linkedRackPositions.remove(rackPos);
+        
+        // 2. IMPORTANT: Clear the Rack's internal memory
+        if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) {
+            // Only clear it if the rack actually thinks it belongs to THIS controller
+            if (this.worldPosition.equals(rack.getControllerPos())) {
+                rack.setControllerPos(null);
+                rack.setChanged();
+                level.sendBlockUpdated(rackPos, rack.getBlockState(), rack.getBlockState(), 3);
+            }
         }
-        this.setChanged();
+
+        // 3. Refresh playlist and sync
+        if (removed) {
+            this.buildPlaylist(); 
+            if (level != null && !level.isClientSide) {
+                level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
+                broadcastPlaylistUpdate(); 
+            }
+            this.setChanged();
+        }
     }
 
     public void clearLinkedRacks() {
@@ -230,91 +253,87 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         Iterator<BlockPos> iterator = this.linkedRackPositions.iterator();
         while (iterator.hasNext()) {
             BlockPos rackPos = iterator.next();
-
             if (!level.isLoaded(rackPos)) {
                 continue;
             }
-
             BlockEntity targetBE = level.getBlockEntity(rackPos);
-
             if (!(targetBE instanceof DiscRackBlockEntity)) {
                 iterator.remove();
                 this.setChanged();
             }
         }
-
+        int newStatus = -1;
         BlockPos jukeboxPos = findJukebox();
-        if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) 
-        {
-            ItemStack playing = jukebox.getTheItem();
-            // QoL Patch: If jukebox has a disc but the controller thinks it's empty, try to claim it
-            if (!playing.isEmpty() && currentlyPlayingEntry == null) {
-                reconcileJukeboxState(playing);
+        if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
+                if (jukebox.getBlockState().getValue(JukeboxBlock.HAS_RECORD)) {
+                    // Server-side isPlaying() is reliable [cite: 289]
+                    newStatus = jukebox.getSongPlayer().isPlaying() ? 1 : 0;
+                } else {
+                    newStatus = 0; // Idle [cite: 291]
+                }
             }
-            this.data.set(2, playing.isEmpty() ? 0 : 1);// 0 = Empty, 1 = Has Disc
-        } 
-        else 
-        {
-            this.data.set(2, -1); // -1 = No Jukebox Found
+
+        // Only sync if the status actually changed to save bandwidth
+        if (this.cachedStatus != newStatus) {
+            this.cachedStatus = newStatus;
+            this.setChanged();
+            if (level instanceof ServerLevel) {
+                level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
+            }
         }
-        
     }
     //#endregion
     //#region NBT Data Storage
     @Override
-    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) 
+    {
         super.saveAdditional(tag, registries);
-
-        long[] positions = linkedRackPositions.stream()
-                .mapToLong(BlockPos::asLong)
-                .toArray();
-
+        ListTag queueTag = new ListTag();
+        ListTag exclusionTag = new ListTag();
+        long[] positions = linkedRackPositions.stream().mapToLong(BlockPos::asLong).toArray();
+        // Save Queue as a List of Strings (Registry Names)
+        for (Item item : customQueueOrder) {
+            queueTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
+        }
+        // Save Exclusions
+        for (Item item : excludedTracks) {
+            exclusionTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
+        }
         tag.putLongArray("LinkedRacks", positions);
         tag.putLong("SongStart", songStartTick);
         tag.putInt("SongDuration", songDurationTicks);
         tag.putInt("CurrentPlayingSlot", currentPlaylistIndex);
         tag.putBoolean("autoplayEnabled", this.autoplayEnabled);
-        // Save Queue as a List of Strings (Registry Names)
-        ListTag queueTag = new ListTag();
-        for (Item item : customQueueOrder) {
-            queueTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
-        }
-        tag.put("queueOrder", queueTag);
-
-        // Save Exclusions
-        ListTag exclusionTag = new ListTag();
-        for (Item item : excludedTracks) {
-            exclusionTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
-        }
         tag.put("excludedTracks", exclusionTag);
+        tag.put("queueOrder", queueTag);
+        tag.putInt("CachedStatus", this.cachedStatus);
     }
 
     @Override
-    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) 
+    {
         super.loadAdditional(tag, registries);
-
         linkedRackPositions.clear();
-
         long[] positions = tag.getLongArray("LinkedRacks");
-
         for (long posLong : positions) {
             linkedRackPositions.add(BlockPos.of(posLong));
         }
         songStartTick = tag.getLong("SongStart");
         songDurationTicks = tag.getInt("SongDuration");
         currentPlaylistIndex = tag.getInt("CurrentPlayingSlot");
+        this.cachedStatus = tag.getInt("CachedStatus");
         this.autoplayEnabled = tag.getBoolean("autoplayEnabled");
-
         customQueueOrder.clear();
         ListTag queueTag = tag.getList("queueOrder", 8); // 8 is the ID for StringTag
-        for (int i = 0; i < queueTag.size(); i++) {
+        for (int i = 0; i < queueTag.size(); i++) 
+        {
             ResourceLocation rl = ResourceLocation.parse(queueTag.getString(i));
             customQueueOrder.add(BuiltInRegistries.ITEM.get(rl));
         }
-
         excludedTracks.clear();
         ListTag exclusionTag = tag.getList("excludedTracks", 8);
-        for (int i = 0; i < exclusionTag.size(); i++) {
+        for (int i = 0; i < exclusionTag.size(); i++) 
+        {
             ResourceLocation rl = ResourceLocation.parse(exclusionTag.getString(i));
             excludedTracks.add(BuiltInRegistries.ITEM.get(rl));
         }
@@ -510,8 +529,19 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             broadcastPlaylistUpdate();
         }      
     }
+    public void StopJukebox() {
+        if (level == null || level.isClientSide) return;
+        this.autoplayEnabled = false;
+        this.stopAndReturnDisc();
+    }
     //#endregion
     //#region playlist Handler
+    // New method to handle the Skip button
+    public void skipTrack() {
+        if (level == null || level.isClientSide) return;
+        // Simply trigger the existing queue logic
+        this.playNextInQueue();
+    }
     public List<PlaylistEntry> buildPlaylist() {
         List<PlaylistEntry> playlist = new ArrayList<>();
         if (level == null) return playlist;

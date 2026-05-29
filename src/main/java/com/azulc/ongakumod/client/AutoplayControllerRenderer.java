@@ -66,10 +66,7 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
         // Explicitly check if a song is actually supposed to be playing
         if (startTick != -1 && duration > 0) {
             long elapsed = controller.getLevel().getGameTime() - startTick;
-            
-            // Clamp elapsed so network latency doesn't make it negative or overflow
             elapsed = Math.max(0, Math.min(elapsed, duration));
-            
             float progress = (float) elapsed / duration;
             progressFrame = Math.round(progress * 12);
         }
@@ -93,15 +90,6 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
         float fH = 1.0f / totalFrames;
         float minV = frame * fH;
         float maxV = minV + fH;
-
-        // --- SIDE A (Counter-Clockwise) ---
-        consumer.addVertex(matrix, minX, minY, z).setColor(1f, 1f, 1f, 1f).setUv(0, maxV).setOverlay(overlay).setLight(light).setNormal(0, 0, -1);
-        consumer.addVertex(matrix, maxX, minY, z).setColor(1f, 1f, 1f, 1f).setUv(1, maxV).setOverlay(overlay).setLight(light).setNormal(0, 0, -1);
-        consumer.addVertex(matrix, maxX, maxY, z).setColor(1f, 1f, 1f, 1f).setUv(1, minV).setOverlay(overlay).setLight(light).setNormal(0, 0, -1);
-        consumer.addVertex(matrix, minX, maxY, z).setColor(1f, 1f, 1f, 1f).setUv(0, minV).setOverlay(overlay).setLight(light).setNormal(0, 0, -1);
-
-        // --- SIDE B (Clockwise / Flipped) ---
-        // We reverse the X order so the "back" becomes the "front"
         consumer.addVertex(matrix, maxX, minY, z).setColor(1f, 1f, 1f, 1f).setUv(1, maxV).setOverlay(overlay).setLight(light).setNormal(0, 0, 1);
         consumer.addVertex(matrix, minX, minY, z).setColor(1f, 1f, 1f, 1f).setUv(0, maxV).setOverlay(overlay).setLight(light).setNormal(0, 0, 1);
         consumer.addVertex(matrix, minX, maxY, z).setColor(1f, 1f, 1f, 1f).setUv(0, minV).setOverlay(overlay).setLight(light).setNormal(0, 0, 1);
@@ -130,7 +118,7 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
             .setTransparencyState(RenderStateShard.TRANSLUCENT_TRANSPARENCY)
             .setDepthTestState(RenderStateShard.NO_DEPTH_TEST)
             .setCullState(RenderStateShard.NO_CULL)
-            .setLineState(new RenderStateShard.LineStateShard(OptionalDouble.of(2.0D))) 
+            .setLineState(new RenderStateShard.LineStateShard(OptionalDouble.of(3.0D))) 
             .createCompositeState(false));
 
     @Override

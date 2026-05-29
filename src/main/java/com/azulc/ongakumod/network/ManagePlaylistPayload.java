@@ -10,7 +10,7 @@ import net.minecraft.resources.ResourceLocation;
 public record ManagePlaylistPayload(BlockPos pos, String itemRegistryName, Action action) implements CustomPacketPayload {
     public static final Type<ManagePlaylistPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath("ongakumod", "manage_playlist"));
 
-    public enum Action { TOGGLE_AUTOPLAY, MOVE_UP, MOVE_DOWN, EXCLUDE }
+    public enum Action { TOGGLE_AUTOPLAY, MOVE_UP, MOVE_DOWN, EXCLUDE,SKIP }
 
     public static final StreamCodec<ByteBuf, ManagePlaylistPayload> STREAM_CODEC = StreamCodec.composite(
             BlockPos.STREAM_CODEC, ManagePlaylistPayload::pos,
