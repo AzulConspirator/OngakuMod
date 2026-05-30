@@ -84,6 +84,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         this.addRenderableWidget(new IconButton(startX, startY, 20, 20, 2, false, 
             Component.literal("Stop"), (b) -> {
             PacketDistributor.sendToServer(new StopDiscPayload(this.menu.getBlockPos()));
+            this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
 
         // 2. PLAY
@@ -91,24 +92,22 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
             Component.literal("Play"), (b) -> {
                 MusicListWidget.MusicEntry selected = this.musicList.getSelected();
                 if (selected != null) {
-                    // This is where the actual packet is sent
                     this.setSelectedDisc(selected.index); 
-                } 
-/*             if (this.musicList.getSelected() != null) {
-                this.setSelectedDisc(this.musicList.getSelected().index);
-            } */
+                    this.musicList.refreshList(this.menu.getSyncedDiscs());
+                }
         }));
-
         // 3. SKIP
         this.addRenderableWidget(new IconButton(startX + (spacing * 2), startY, 20, 20, 1, false, 
             Component.literal("Skip"), (b) -> {
             PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.SKIP));
+            this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
 
         // 4. AUTOPLAY (Indicator in corner)
         this.addRenderableWidget(new IconButton(startX + (spacing * 3), startY, 20, 20, 3, true, 
             Component.literal("Autoplay"), (b) -> {
             PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY));
+            this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
     }
 

@@ -23,6 +23,8 @@ public class DiscColorCache
     };
 
     public record DiscColors(
+        @javax.annotation.Nullable ResourceLocation customVinylTex,
+        @javax.annotation.Nullable ResourceLocation customSleeveTex,
         int Index1Color, 
         int Index2Color, 
         int Index3Color,
@@ -33,18 +35,24 @@ public class DiscColorCache
         int Index8Color
     ) {}
 
-    public static void update(ResourceManager manager) 
-    {
+    public static void update(ResourceManager manager) {
         CACHE.clear();
-        var playableDiscs = BuiltInRegistries.ITEM.stream().filter(item -> item.getDefaultInstance().has(DataComponents.JUKEBOX_PLAYABLE)).toList();
+        var playableDiscs = BuiltInRegistries.ITEM.stream()
+            .filter(item -> item.getDefaultInstance().has(DataComponents.JUKEBOX_PLAYABLE))
+            .toList();
 
-        for (Item item : playableDiscs) 
-        {
+        for (Item item : playableDiscs) {
             ResourceLocation location = BuiltInRegistries.ITEM.getKey(item);
-            
-            OngakuMod.LOGGER.info("Attempting to sample disc: {}", location);
+            // custom texture path
+            ResourceLocation customVinylPath = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/vvs_decor_custom/" + location.getPath() + ".png");
+            ResourceLocation customSleevePath = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/vvs_decor_custom/" + location.getPath() + "_cover.png");
+            if (manager.getResource(customVinylPath).isPresent() & manager.getResource(customVinylPath).isPresent()) {
+                CACHE.put(item, new DiscColors(customVinylPath,customSleevePath,0,0,0,0,0,0,0,0));
+                OngakuMod.LOGGER.info("Using custom texture for: {}", location);
+                continue;
+            }
+            //Fallback: Custom Item Texture Color Sampling
             ResourceLocation texturePath = ResourceLocation.fromNamespaceAndPath(location.getNamespace(), "textures/item/" + location.getPath() + ".png");
-
             manager.getResource(texturePath).ifPresentOrElse(resource -> 
             {
                 try (InputStream is = resource.open(); NativeImage image = NativeImage.read(is)) 
@@ -58,6 +66,8 @@ public class DiscColorCache
                     int Index7Color    = sampleFromGrid(image, 13, 9); // Outline Down
                     int Index8Color    = sampleFromGrid(image, 7, 11); // Outline Inbetween
                     CACHE.put(item, new DiscColors(
+                        null,
+                        null,
                         formatColor(Index1Color),
                         formatColor(Index2Color), 
                         formatColor(Index3Color),
@@ -80,7 +90,6 @@ public class DiscColorCache
             });
         }
     }
-
     private static int sampleFromGrid(NativeImage image, int x, int y) 
     {
         int width = image.getWidth();
@@ -115,6 +124,6 @@ public class DiscColorCache
     {
         int _FF22 = 0xFF222222;
         int _FFFF = 0xFFFFFFFF;
-        return CACHE.getOrDefault(item, new DiscColors(_FF22, _FFFF,_FF22,_FF22, _FFFF,_FFFF,_FFFF,_FFFF));
+        return CACHE.getOrDefault(item, new DiscColors(null,null,_FF22, _FFFF,_FF22,_FF22, _FFFF,_FFFF,_FFFF,_FFFF));
     }
 }

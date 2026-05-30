@@ -75,13 +75,17 @@ public class SpeakerBlock extends HorizontalDirectionalBlock implements EntityBl
     @Nullable
     @Override
     public <T extends BlockEntity> BlockEntityTicker<T> getTicker(Level level, BlockState state, BlockEntityType<T> type) {
-        // Only run on the client side for particles
+        // We only want the ticker to run on the client side for particles
         if (level.isClientSide) {
-            return type == OngakuMod.SPEAKER_BLOCK_ENTITY.get() ? (lvl, pos, st, be) -> SpeakerBlockEntity.clientTick(lvl, pos, st, (SpeakerBlockEntity) be) : null;
+            return createTickerHelper(type, OngakuMod.SPEAKER_BLOCK_ENTITY.get(), SpeakerBlockEntity::clientTick);
         }
         return null;
     }
-    
+
+    @SuppressWarnings("unchecked")
+    protected static <E extends BlockEntity, A extends BlockEntity> BlockEntityTicker<A> createTickerHelper(BlockEntityType<A> actualType, BlockEntityType<E> expectedType, BlockEntityTicker<? super E> ticker) {
+        return expectedType == actualType ? (BlockEntityTicker<A>) ticker : null;
+    }
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
         if (!state.is(newState.getBlock())) {

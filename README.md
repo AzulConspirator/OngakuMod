@@ -36,12 +36,13 @@ Automatically returns discs to their original storage slot after playback
 ## Technical Notes
 
 - Music disc detection is based on the JUKEBOX_PLAYABLE item component
-- Disc color rendering uses model ColorIndex sampling
+- Disc color rendering uses model [TintIndex](https://minecraft.wiki/w/Model) sampling
 - Multiplayer/server stability is still being tested, especially for networking-related features
 
 ## Usage
 
 To connect a Sound Box, crouch + right-click it with a **Tuning Fork**, then right-click a Disc Display. Connected displays will appear in the Sound Box interface.
+Same linking process works with speakers as well.
 
 The Sound Box works by physically moving discs between connected storage and a nearby jukebox. Discs are returned to their original slot after playback whenever possible. If the original slot is unavailable, it will use another empty slot or eject the disc from the jukebox as a fallback.
 
