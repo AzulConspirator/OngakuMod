@@ -44,9 +44,17 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
 
         //Render Connection lines from Rack to Controller
         boolean holdingWrench = player.getMainHandItem().is(OngakuMod.TUNING_WRENCH.get()) || player.getOffhandItem().is(OngakuMod.TUNING_WRENCH.get());
+        
         if (holdingWrench) {
             for (BlockPos rackPos : controller.getLinkedRackPositions()) {
+                poseStack.pushPose();
                 renderLineBetweenBlocks(controller.getBlockPos(), rackPos, poseStack, bufferSource, 0x00FFFF); // Cyan
+                poseStack.popPose();
+            }
+            for (BlockPos SpeakerPos : controller.getLinkedSpeakerPositions()) {
+                poseStack.pushPose();
+                renderLineBetweenBlocks(controller.getBlockPos(), SpeakerPos, poseStack, bufferSource, 0xBDFF7D); // Cyan
+                poseStack.popPose();
             }
         }
         // on Block Face Indicators

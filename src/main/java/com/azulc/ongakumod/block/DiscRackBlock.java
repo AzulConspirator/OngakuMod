@@ -34,8 +34,8 @@ public class DiscRackBlock extends HorizontalDirectionalBlock implements EntityB
         super(properties);
     }
 
-    private static final VoxelShape RACK_X = Block.box(0, 0, 4, 16, 2, 12);
-    private static final VoxelShape RACK_Z = Block.box(4, 0, 0, 12, 2, 16);
+    private static final VoxelShape RACK_X = Block.box(0, 0, 4, 16, 5, 12);
+    private static final VoxelShape RACK_Z = Block.box(4, 0, 0, 12, 5, 16);
 
     @Override
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
@@ -46,6 +46,8 @@ public class DiscRackBlock extends HorizontalDirectionalBlock implements EntityB
                 level.updateNeighbourForOutputSignal(pos, this);
                 BlockPos controllerPos = rack.getControllerPos();
                 if (controllerPos != null && level.getBlockEntity(controllerPos) instanceof AutoplayControllerBlockEntity controller) {
+                    controller.StopJukebox();
+                    controller.broadcastToSpeakers(false, null);
                     controller.removeLinkedRack(pos);
                 }
             }

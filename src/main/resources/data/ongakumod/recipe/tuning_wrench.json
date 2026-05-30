@@ -1,0 +1,21 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "misc",
+  "key": {
+    "A": {
+      "item": "minecraft:stick"
+    },
+    "S": {
+      "item": "minecraft:iron_nugget"
+    }
+  },
+  "pattern": [
+    "S S",
+    " A ",
+    " S "
+  ],
+  "result": {
+    "count": 1,
+    "id": "ongakumod:tuning_wrench"
+  }
+}

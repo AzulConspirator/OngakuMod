@@ -27,6 +27,18 @@ Automatically returns discs to their original storage slot after playback
 
 ![Sound Box Image](https://cdn.modrinth.com/data/xVfyaI9r/images/9f0c9404743a205e2abbcd60aed8732876525588.png)
 
+### Speaker
+
+- Connect to a Sound Box to extend the range of the connected jukebox
+
+![Speaker Image](https://cdn.modrinth.com/data/xVfyaI9r/images/bd4eb570280c4dd1c4e53fa81358cd78d183d2ac.png)
+
+## Technical Notes
+
+- Music disc detection is based on the JUKEBOX_PLAYABLE item component
+- Disc color rendering uses model ColorIndex sampling
+- Multiplayer/server stability is still being tested, especially for networking-related features
+
 ## Usage
 
 To connect a Sound Box, crouch + right-click it with a **Tuning Fork**, then right-click a Disc Display. Connected displays will appear in the Sound Box interface.
@@ -35,17 +47,17 @@ The Sound Box works by physically moving discs between connected storage and a n
 
 Disc Displays can also be used independently without a Sound Box.
 
-## Technical Notes
 
-- Music disc detection is based on the JUKEBOX_PLAYABLE item component
-- Disc color rendering uses model [TintIndex](https://minecraft.wiki/w/Model), thus output can look wonky.
-- Multiplayer/server stability is still being tested, especially for networking-related features
-- During the creation of this mod, it started with **OngakuMod**, internally it still uses that name such as Repo name, item ID and such.
+## Planned
+
+- Disc Color System turn into fallback, support texture per displayed disc/cover
+- more variants on speaker
+- portable solution
 
 ## Credit
 
 - Made it Solo Babyyy!!
-- Inspired by [Sophisticated Storage by P3pp3rF1y](https://modrinth.com/mod/sophisticated-storage). this no relation to that mod or its dev.
+- Inspired by [Sophisticated Storage by P3pp3rF1y](https://modrinth.com/mod/sophisticated-storage). this no relation to that mod or its dev. 
 
 ## License
 

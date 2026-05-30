@@ -1,0 +1,12 @@
+{
+  "variants": {
+    "facing=north,vertical_facing=up": { "model": "ongakumod:block/speaker" },
+    "facing=south,vertical_facing=up": { "model": "ongakumod:block/speaker", "y": 180 },
+    "facing=east,vertical_facing=up": { "model": "ongakumod:block/speaker", "y": 90 },
+    "facing=west,vertical_facing=up": { "model": "ongakumod:block/speaker", "y": 270 },
+    "facing=north,vertical_facing=down": { "model": "ongakumod:block/speaker" ,"x": 180},
+    "facing=south,vertical_facing=down": { "model": "ongakumod:block/speaker","x": 180, "y": 180 },
+    "facing=east,vertical_facing=down": { "model": "ongakumod:block/speaker","x": 180, "y": 90 },
+    "facing=west,vertical_facing=down": { "model": "ongakumod:block/speaker","x": 180, "y": 270 }
+  }
+}

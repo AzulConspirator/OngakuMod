@@ -8,8 +8,10 @@ import com.azulc.ongakumod.block.AutoplayControllerBlock;
 import com.azulc.ongakumod.block.DiscRackBlock;
 import com.azulc.ongakumod.block.DiscRackBoxBlock;
 import com.azulc.ongakumod.block.DiscRackWallBlock;
+import com.azulc.ongakumod.block.SpeakerBlock;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
+import com.azulc.ongakumod.blockentity.SpeakerBlockEntity;
 import com.azulc.ongakumod.container.AutoplayMenu;
 import com.azulc.ongakumod.container.DiscContainer;
 import com.azulc.ongakumod.item.TuningWrenchItem;
@@ -81,7 +83,10 @@ public class OngakuMod
     public static final DeferredItem<BlockItem> DISC_BOX_ITEM                                                                       = ITEMS.registerSimpleBlockItem("disc_box", DISC_BOX);
     public static final DeferredBlock<Block> DISC_WALL_RACK                                                                         = BLOCKS.register("disc_wallmount", () -> new DiscRackWallBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
     public static final DeferredItem<BlockItem> DISC_WALL_RACK_ITEM                                                                 = ITEMS.registerSimpleBlockItem("disc_wallmount", DISC_WALL_RACK);
+    public static final DeferredBlock<SpeakerBlock> SPEAKER                                                                        = BLOCKS.register("speaker", () -> new SpeakerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
+    public static final DeferredItem<BlockItem> SPEAKER_ITEM                                                                        = ITEMS.registerSimpleBlockItem("speaker", SPEAKER);
     //
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SpeakerBlockEntity>> SPEAKER_BLOCK_ENTITY                = BLOCK_ENTITIES.register("speaker_block_entity", () -> BlockEntityType.Builder.of(SpeakerBlockEntity::new, BLOCKS.getEntries().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DiscRackBlockEntity>> DISCRACK_BLOCK_ENTITY              = BLOCK_ENTITIES.register("discrack_block_entity", () -> BlockEntityType.Builder.of(DiscRackBlockEntity::new, BLOCKS.getEntries().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
     // Controller
     public static final DeferredBlock<Block> AUTOPLAY_CONTROLLER                                                                    = BLOCKS.register("autoplay_controller", () -> new AutoplayControllerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));//() -> new AutoplayControllerBlock(BlockBehaviour.Properties.copy(Blocks.JUKEBOX)));
@@ -99,6 +104,7 @@ public class OngakuMod
         output.accept(DISC_RACK_ITEM.get());
         output.accept(DISC_BOX_ITEM.get());
         output.accept(DISC_WALL_RACK_ITEM.get());
+        output.accept(SPEAKER_ITEM.get());
     }).build());
     //
 

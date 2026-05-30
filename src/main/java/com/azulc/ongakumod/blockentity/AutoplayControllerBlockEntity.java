@@ -1,20 +1,27 @@
 package com.azulc.ongakumod.blockentity;
 
+import net.neoforged.neoforge.network.PacketDistributor;
+
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.world.level.block.state.BlockState;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.core.registries.Registries;
+
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
 import net.minecraft.nbt.StringTag;
+
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
+
 import net.minecraft.resources.ResourceLocation;
+
 import net.minecraft.server.level.ServerLevel;
+
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
@@ -22,6 +29,7 @@ import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.JukeboxBlock;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
@@ -35,12 +43,15 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import javax.annotation.Nullable;
+
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.network.SyncPlaylistPayload;
 
 public class AutoplayControllerBlockEntity extends BlockEntity 
 {
     private final Set<BlockPos> linkedRackPositions = new HashSet<>();
+    private final Set<BlockPos> linkedSpeakers = new HashSet<>();
     private int tickCounter = 0;
     public PlaylistEntry currentlyPlayingEntry = null;
     private int currentPlaylistIndex = -1;
@@ -124,31 +135,33 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     //#region Linked Rack Handler
     public boolean addLinkedRack(BlockPos rackPos) 
     {
-        if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) {
-                BlockPos existingController = rack.getControllerPos();
-                // CASE 1: TOGGLE OFF - If already linked to THIS controller, disconnect it
-                if (this.worldPosition.equals(existingController)) {
-                    this.removeLinkedRack(rackPos);
-                    return false; // Return false to indicate "Disconnected"
-                }
-                // CASE 2: REPLACE - If linked to a DIFFERENT controller, force a transfer
-                if (existingController != null) {
-                    if (level.getBlockEntity(existingController) instanceof AutoplayControllerBlockEntity oldController) {
-                        // Tell the OLD controller to forget this rack
-                        oldController.removeLinkedRack(rackPos);
-                    }
-                }
-                // CASE 3: CONNECT - Establish the new link
-                rack.setControllerPos(this.worldPosition);
-                this.linkedRackPositions.add(rackPos);
-                // Finalize sync
-                this.setChanged();
-                level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
-                rack.setChanged();
-                level.sendBlockUpdated(rackPos, rack.getBlockState(), rack.getBlockState(), 3);
-                return true; 
+        if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) 
+        {
+            BlockPos existingController = rack.getControllerPos();
+            // CASE 1: TOGGLE OFF - If already linked to THIS controller, disconnect it
+            if (this.worldPosition.equals(existingController)) {
+                this.removeLinkedRack(rackPos);
+                return false; // Return false to indicate "Disconnected"
             }
-            return false;
+            // CASE 2: REPLACE - If linked to a DIFFERENT controller, force a transfer
+            if (existingController != null) {
+                if (level.getBlockEntity(existingController) instanceof AutoplayControllerBlockEntity oldController) 
+                {
+                    // Tell the OLD controller to forget this rack
+                    oldController.removeLinkedRack(rackPos);
+                }
+            }
+            // CASE 3: CONNECT - Establish the new link
+            rack.setControllerPos(this.worldPosition);
+            this.linkedRackPositions.add(rackPos);
+            // Finalize sync
+            this.setChanged();
+            level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
+            rack.setChanged();
+            level.sendBlockUpdated(rackPos, rack.getBlockState(), rack.getBlockState(), 3);
+            return true; 
+        }
+        return false;
     }
 
     public void removeLinkedRack(BlockPos rackPos) {
@@ -272,7 +285,10 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                     newStatus = 0; // Idle [cite: 291]
                 }
             }
-
+        if (newStatus != 1)
+        {
+            broadcastToSpeakers(false, null);
+        }
         // Only sync if the status actually changed to save bandwidth
         if (this.cachedStatus != newStatus) {
             this.cachedStatus = newStatus;
@@ -291,6 +307,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         ListTag queueTag = new ListTag();
         ListTag exclusionTag = new ListTag();
         long[] positions = linkedRackPositions.stream().mapToLong(BlockPos::asLong).toArray();
+        long[] Speakerpositions = linkedSpeakers.stream().mapToLong(BlockPos::asLong).toArray();
         // Save Queue as a List of Strings (Registry Names)
         for (Item item : customQueueOrder) {
             queueTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
@@ -300,6 +317,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             exclusionTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
         }
         tag.putLongArray("LinkedRacks", positions);
+        tag.putLongArray("linkedSpeakers", Speakerpositions);
         tag.putLong("SongStart", songStartTick);
         tag.putInt("SongDuration", songDurationTicks);
         tag.putInt("CurrentPlayingSlot", currentPlaylistIndex);
@@ -314,9 +332,14 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     {
         super.loadAdditional(tag, registries);
         linkedRackPositions.clear();
-        long[] positions = tag.getLongArray("LinkedRacks");
-        for (long posLong : positions) {
+        long[] _positions = tag.getLongArray("LinkedRacks");
+        for (long posLong : _positions) {
             linkedRackPositions.add(BlockPos.of(posLong));
+        }
+        linkedSpeakers.clear();
+        long[] _linkedSpeakers = tag.getLongArray("linkedSpeakers");
+        for (long posLong : _linkedSpeakers) {
+            linkedSpeakers.add(BlockPos.of(posLong));
         }
         songStartTick = tag.getLong("SongStart");
         songDurationTicks = tag.getInt("SongDuration");
@@ -380,6 +403,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         return linkedRackPositions;
     }
 
+    @SuppressWarnings("unused")
     private void reconcileJukeboxState(ItemStack playing) {
         for (BlockPos rackPos : linkedRackPositions) {
             DiscRackBlockEntity rack = getRack(rackPos);
@@ -489,7 +513,6 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         this.songStartTick = level.getGameTime();
 
         currentPlaylistIndex = playlistIndex;
-
         currentlyPlayingEntry = new PlaylistEntry(
                 entry.rackPos(),
                 entry.slotIndex(),
@@ -502,6 +525,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             newState = state.setValue(JukeboxBlock.HAS_RECORD, true);
             level.setBlock(jukeboxPos, newState, 3);
         }
+        broadcastToSpeakers(true, discCopy);
         rack.setChanged();
         level.sendBlockUpdated(rack.getBlockPos(),rack.getBlockState(),rack.getBlockState(),3);
         level.levelEvent(null, 1010, jukeboxPos, Item.getId(discCopy.getItem()));
@@ -526,6 +550,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             // Notify the client that the jukebox is now empty
             level.sendBlockUpdated(jukeboxPos, level.getBlockState(jukeboxPos), level.getBlockState(jukeboxPos), 3);
             level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
+            broadcastToSpeakers(false,null);
             broadcastPlaylistUpdate();
         }      
     }
@@ -653,4 +678,88 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
     }
     //#endregion
+    //#region Speaker handler
+    public void broadcastToSpeakers(boolean isPlaying, @Nullable ItemStack disc) {
+        if (level == null || level.isClientSide) return;
+        for (BlockPos speakerPos : linkedSpeakers) {
+            if (level.isLoaded(speakerPos)) {
+                BlockEntity be = level.getBlockEntity(speakerPos);
+                if (be instanceof SpeakerBlockEntity speaker) {
+                    // Update the BE state so particles work!
+                    speaker.setPlaying(isPlaying);
+
+                    if (isPlaying && disc != null) {
+                        int songId = getSongId(level, disc);
+                        if (songId != -1) {
+                            level.levelEvent(null, 1010, speakerPos, songId);
+                        }
+                    } else {
+                        level.levelEvent(1011, speakerPos, 0);
+                    }
+                }
+                else
+                {
+                    removeLinkedSpeaker(speakerPos);
+                }
+            }
+        }
+    }
+
+    // Helper to get the correct Registry ID for the song
+    private int getSongId(Level level, ItemStack stack) {
+        var songHolder = stack.get(DataComponents.JUKEBOX_PLAYABLE);
+        if (songHolder != null) 
+        {   
+            var E = level.registryAccess().registryOrThrow(Registries.JUKEBOX_SONG).getId(songHolder.song().key());
+            OngakuMod.LOGGER.info("ID is " + E);
+            return E;
+        }
+        return -1;
+    }
+
+    // 2. Stop jukebox on connection & update speaker state 
+    public boolean addLinkedSpeaker(BlockPos speakerPos) {
+        if (level == null || level.isClientSide) return false;
+
+        // Stop music whenever a connection state changes (as requested)
+        this.StopJukebox(); 
+        if (linkedSpeakers.contains(speakerPos)) {
+            linkedSpeakers.remove(speakerPos);
+            if (level.getBlockEntity(speakerPos) instanceof SpeakerBlockEntity speaker) {
+                speaker.setControllerPos(null);
+                speaker.setPlaying(false); // Stop particles immediately
+            }
+            this.setChanged();
+            return false;
+        } else {
+            linkedSpeakers.add(speakerPos);
+            if (level.getBlockEntity(speakerPos) instanceof SpeakerBlockEntity speaker) {
+                speaker.setControllerPos(this.worldPosition);
+                // Don't set playing to true yet; wait for the next song to start
+            }
+            this.setChanged();
+            return true;
+        }
+    }
+
+    public void removeLinkedSpeaker(BlockPos speakerPos) {
+        boolean removed = this.linkedSpeakers.remove(speakerPos);
+        if (level.getBlockEntity(speakerPos) instanceof SpeakerBlockEntity rack) {
+            if (this.worldPosition.equals(rack.getControllerPos())) {
+                rack.setControllerPos(null);
+                rack.setChanged();
+                level.sendBlockUpdated(speakerPos, rack.getBlockState(), rack.getBlockState(), 3);
+            }
+        }
+        if (removed) {
+            broadcastToSpeakers(false, null);
+            this.setChanged();
+        }
+    }
+    public Set<BlockPos> getLinkedSpeakerPositions() {
+        return linkedSpeakers;
+    }
+    //#endregion
+
+
 }
