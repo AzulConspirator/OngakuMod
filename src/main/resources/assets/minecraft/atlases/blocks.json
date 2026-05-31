@@ -1,0 +1,9 @@
+{
+  "sources": [
+    {
+      "type": "directory",
+      "source": "vvs_decor_custom",
+      "prefix": "vvs_decor_custom/"
+    }
+  ]
+}

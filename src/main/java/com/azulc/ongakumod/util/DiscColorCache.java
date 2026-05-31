@@ -18,6 +18,7 @@ import java.util.Map;
 public class DiscColorCache 
 {
     private static final Map<Item, DiscColors> CACHE = new HashMap<>();
+    
     public static final Predicate<ItemStack> FILTER = stack -> {
         return stack.has(DataComponents.JUKEBOX_PLAYABLE);
     };
@@ -44,11 +45,13 @@ public class DiscColorCache
         for (Item item : playableDiscs) {
             ResourceLocation location = BuiltInRegistries.ITEM.getKey(item);
             // custom texture path
-            ResourceLocation customVinylPath = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/vvs_decor_custom/" + location.getPath() + ".png");
-            ResourceLocation customSleevePath = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/vvs_decor_custom/" + location.getPath() + "_cover.png");
-            if (manager.getResource(customVinylPath).isPresent() & manager.getResource(customVinylPath).isPresent()) {
-                CACHE.put(item, new DiscColors(customVinylPath,customSleevePath,0,0,0,0,0,0,0,0));
-                OngakuMod.LOGGER.info("Using custom texture for: {}", location);
+            ResourceLocation vinylFile = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID,"textures/vvs_decor_custom/" +location.getPath() +".png");
+            ResourceLocation sleeveFile = ResourceLocation.fromNamespaceAndPath( OngakuMod.MODID,"textures/vvs_decor_custom/" +location.getPath() +"_cover.png");
+
+            if (manager.getResource(vinylFile).isPresent()&& manager.getResource(sleeveFile).isPresent())
+            {
+                CACHE.put(item,new DiscColors(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID,"vvs_decor_custom/" + location.getPath()),ResourceLocation.fromNamespaceAndPath( OngakuMod.MODID,"vvs_decor_custom/" +location.getPath() +"_cover" ),0,0,0,0,0,0,0,0));
+                OngakuMod.LOGGER.info("Using custom disc textures for {}", location);
                 continue;
             }
             //Fallback: Custom Item Texture Color Sampling
@@ -90,6 +93,8 @@ public class DiscColorCache
             });
         }
     }
+
+
     private static int sampleFromGrid(NativeImage image, int x, int y) 
     {
         int width = image.getWidth();
@@ -126,4 +131,6 @@ public class DiscColorCache
         int _FFFF = 0xFFFFFFFF;
         return CACHE.getOrDefault(item, new DiscColors(null,null,_FF22, _FFFF,_FF22,_FF22, _FFFF,_FFFF,_FFFF,_FFFF));
     }
+
+
 }

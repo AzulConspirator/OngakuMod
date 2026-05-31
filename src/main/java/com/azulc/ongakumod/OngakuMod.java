@@ -21,7 +21,6 @@ import com.azulc.ongakumod.network.PlayDiscPayload;
 import com.azulc.ongakumod.network.ServerPayloadHandler;
 import com.azulc.ongakumod.network.StopDiscPayload;
 import com.azulc.ongakumod.network.SyncPlaylistPayload;
-import com.azulc.ongakumod.util.DiscColorCache;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.BlockPos;
@@ -119,15 +118,8 @@ public class OngakuMod
         DATA_COMPONENT_TYPES.register(modEventBus);
         NeoForge.EVENT_BUS.register(this);
         modEventBus.addListener(this::registerNetworking);
-        modEventBus.addListener(this::onAddReloadListeners);
         //modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
         
-    }
-
-    private void onAddReloadListeners(net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent event) {
-        event.registerReloadListener((preparationBarrier, resourceManager, profilerFiller, profilerFiller1, executor, executor1) -> {
-            return preparationBarrier.wait(null).thenRunAsync(() -> { DiscColorCache.update(resourceManager); }, executor1);
-        });
     }
     
     private void commonSetup(FMLCommonSetupEvent event) 

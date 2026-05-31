@@ -4,6 +4,7 @@ import com.azulc.ongakumod.client.AutoplayControllerRenderer;
 import com.azulc.ongakumod.client.DiscRackRenderer;
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.client.screen.DiscRackScreen;
+import com.azulc.ongakumod.util.DiscColorCache;
 
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
@@ -37,5 +38,12 @@ public class OngakuModClient {
     public static void registerRenderers(EntityRenderersEvent.RegisterRenderers event) {
         event.registerBlockEntityRenderer(OngakuMod.DISCRACK_BLOCK_ENTITY.get(), DiscRackRenderer::new);
         event.registerBlockEntityRenderer(OngakuMod.AUTOPLAY_BLOCK_ENTITY.get(), AutoplayControllerRenderer::new);
+    }
+
+     @SubscribeEvent
+    public static void onAddReloadListeners(net.neoforged.neoforge.client.event.RegisterClientReloadListenersEvent event) {
+        event.registerReloadListener((preparationBarrier, resourceManager, profilerFiller, profilerFiller1, executor, executor1) -> {
+            return preparationBarrier.wait(null).thenRunAsync(() -> { DiscColorCache.update(resourceManager); }, executor1);
+        });
     }
 }

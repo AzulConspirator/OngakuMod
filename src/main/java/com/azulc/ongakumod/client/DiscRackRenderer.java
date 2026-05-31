@@ -12,14 +12,18 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.blockentity.BlockEntityRenderer;
 import net.minecraft.client.renderer.blockentity.BlockEntityRendererProvider;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.core.Direction;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.world.inventory.InventoryMenu;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
@@ -134,21 +138,23 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
 
     private void renderQuads(PoseStack.Pose pose, MultiBufferSource buffer, List<BakedQuad> quads, Boolean IsSleeve, DiscColorCache.DiscColors colors, int light, int overlay) 
     {
-        ResourceLocation customVinylTex = colors.customVinylTex();
-        ResourceLocation customSleeveTex = colors.customSleeveTex();
-        VertexConsumer consumer;
-        if (customVinylTex != null && customSleeveTex != null) 
-        {
-            consumer = (IsSleeve = true) ? buffer.getBuffer(RenderType.entityCutout(customSleeveTex)) : buffer.getBuffer(RenderType.entityCutout(customVinylTex));
+        ResourceLocation CustomTex = IsSleeve ? colors.customSleeveTex() : colors.customVinylTex();
+        VertexConsumer consumer = buffer.getBuffer(RenderType.cutout());
+        
+        TextureAtlasSprite newSprite = null;
+        if (CustomTex != null) {
+            //OngakuMod.LOGGER.info("Looking Sprite at : "+CustomTex);
+            newSprite = getAtlasSprite(CustomTex);
         }
-        consumer = buffer.getBuffer(RenderType.cutout());
+        
         for (BakedQuad quad : quads) 
         {
             int color;
-            if (customVinylTex != null && customSleeveTex != null) 
+            if (CustomTex != null) 
             {
                 color = 0xFFFFFFFF; // Don't tint if using a custom texture
-            } else 
+            } 
+            else 
             {
                 color =  switch (quad.getTintIndex())
                 {
@@ -167,7 +173,43 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
             float g = ((color >> 8) & 0xFF) / 255.0f;
             float b = (color & 0xFF) / 255.0f;
             float a = ((color >> 24) & 0xFF) / 255.0f;
-            consumer.putBulkData(pose, quad, r, g, b, a, light, overlay, true);
+
+            if (newSprite != null) 
+            {
+                // Remap the model's UVs from the default texture to your custom sprite
+                renderRemappedQuad(pose, consumer, quad, newSprite, r, g, b, a, light, overlay);
+            } 
+            else 
+            {
+                consumer.putBulkData(pose, quad, r, g, b, a, light, overlay, true);
+            }
+        }
+    }
+    private TextureAtlasSprite getAtlasSprite(ResourceLocation spriteId)
+    {
+        TextureAtlas atlas = Minecraft.getInstance().getModelManager().getAtlas(InventoryMenu.BLOCK_ATLAS);
+        TextureAtlasSprite sprite = atlas.getSprite(spriteId);
+        return sprite;
+    }
+    private void renderRemappedQuad(PoseStack.Pose pose, VertexConsumer consumer,BakedQuad quad,TextureAtlasSprite newSprite,float r, float g,float b, float a,int light,int overlay)
+    {
+        TextureAtlasSprite oldSprite = quad.getSprite();
+        int[] data = quad.getVertices();
+
+        for (int vertex = 0; vertex < 4; vertex++)
+        {
+            int base = vertex * 8;
+
+            float x = Float.intBitsToFloat(data[base]);
+            float y = Float.intBitsToFloat(data[base + 1]);
+            float z = Float.intBitsToFloat(data[base + 2]);
+            float u = Float.intBitsToFloat(data[base + 4]);
+            float v = Float.intBitsToFloat(data[base + 5]);
+            float normalizedU = oldSprite.getUOffset(u);
+            float normalizedV = oldSprite.getVOffset(v);
+            float remappedU = newSprite.getU(normalizedU);
+            float remappedV = newSprite.getV(normalizedV);
+            consumer.addVertex(pose.pose(),x,y,z).setColor(r, g, b, a).setUv(remappedU, remappedV).setOverlay(overlay).setLight(light).setNormal(pose,quad.getDirection().getStepX(),quad.getDirection().getStepY(),quad.getDirection().getStepZ());
         }
     }
 }

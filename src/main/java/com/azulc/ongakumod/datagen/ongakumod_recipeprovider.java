@@ -14,7 +14,6 @@ import net.minecraft.data.recipes.SingleItemRecipeBuilder;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
-import net.minecraft.world.item.crafting.StonecutterRecipe;
 import net.neoforged.neoforge.common.conditions.IConditionBuilder;
 
 public class ongakumod_recipeprovider extends RecipeProvider implements IConditionBuilder{
