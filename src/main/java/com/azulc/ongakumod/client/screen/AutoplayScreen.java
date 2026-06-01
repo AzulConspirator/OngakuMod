@@ -157,13 +157,31 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
             if (currentVisualIndex < this.musicList.children().size()) 
             {
                 MusicListWidget.MusicEntry entry = this.musicList.children().get(currentVisualIndex);
-                this.musicList.setSelected(entry);
-                
+                //Render Timeline
+                int elapsed = this.menu.getData().get(4);
+                int total = this.menu.getData().get(5);
+                if (total > 0) 
+                {
+                    float progress = Math.min(1.0f, (float) elapsed / total);
+                    int barX = this.leftPos + 10;
+                    int barY = this.topPos + 115; // Above buttons which start at 130
+                    int barWidth = 70;
+                    int barHeight = 4;
+                    // Background (Dark)
+                    graphics.fill(barX, barY, barX + barWidth, barY + barHeight, 0xFF333333);
+                    // Progress (White/Blue)
+                    graphics.fill(barX, barY, barX + (int)(barWidth * progress), barY + barHeight, 0xFFFFFFFF);
+                    // Time Stamps (Optional)
+                    String timeStr = String.format("%d:%02d / %d:%02d", (elapsed/20)/60, (elapsed/20)%60, (total/20)/60, (total/20)%60);
+                    graphics.pose().pushPose();
+                    graphics.pose().translate(barX, barY + 6, 0);
+                    graphics.pose().scale(0.5f, 0.5f, 1.0f);
+                    graphics.drawString(this.font, timeStr, 0, 0, 0xFFAAAAAA, false);
+                    graphics.pose().popPose();
+                }
                 // Render the big "Now Playing" icon and text
                 ItemStack playingStack = entry.disc;
-                graphics.renderItem(playingStack, this.leftPos + 37, this.topPos + 40);
-                
-                // Draw Tooltip info...
+                graphics.renderItem(playingStack, this.leftPos + 37, this.topPos + 40); // icon
                 List<Component> tooltip = getDiscDescription(playingStack, this.minecraft.level, this.minecraft.player, TooltipFlag.Default.NORMAL);
                 if (tooltip.size() >= 2) 
                 {
@@ -188,6 +206,24 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         super.render(graphics, mouseX, mouseY, partialTick); 
     }
     
+    @Override
+    public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        // If the music list handles the drag (e.g., scrollbar), stop here
+        if (this.musicList != null && this.musicList.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
+            return true;
+        }
+        return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
+    }
+
+    // Also ensure clicks on the scrollbar are captured
+    @Override
+    public boolean mouseClicked(double mouseX, double mouseY, int button) {
+        if (this.musicList != null && this.musicList.mouseClicked(mouseX, mouseY, button)) {
+            return true;
+        }
+        return super.mouseClicked(mouseX, mouseY, button);
+    }
+
     public static class IconButton extends Button {
         protected final int iconIndex;
         protected final boolean isAutoplayButton;
@@ -213,7 +249,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
             // Autoplay Corner Indicator (Top Right)
             if (isAutoplayButton) {
                 // Check state from menu data
-                boolean enabled = ((AutoplayScreen)Minecraft.getInstance().screen).getMenu().getData().get(4) == 1;
+                boolean enabled = ((AutoplayScreen)Minecraft.getInstance().screen).getMenu().getData().get(3) == 1;
                 int color = enabled ? 0xFF55FF55 : 0xFFFF5555; // Green / Red
                 graphics.fill(this.getX() + this.width - 5, this.getY() + 1, this.getX() + this.width - 1, this.getY() + 5, color);
             }

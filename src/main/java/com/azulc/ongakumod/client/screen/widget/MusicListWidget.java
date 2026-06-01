@@ -72,7 +72,18 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
     public int getRowWidth() {
         return 140; // Adjust to fit your GUI background
     }
+    @Override
+    protected int getScrollbarPosition() {
+        // This pushes the scrollbar 10 pixels to the right of the list's edge
+        return this.getX() + this.width + 10; 
+    }
 
+    @Override
+    public boolean isMouseOver(double mouseX, double mouseY) {
+        // Expand the "active" area to the right by 30px to catch scrollbar drags
+        return mouseX >= this.getX() && mouseX <= this.getX() + this.width + 30 && 
+            mouseY >= this.getY() && mouseY <= this.getY() + this.height;
+    }
     protected boolean isSelectedItem(int index) {
         return this.getSelected() != null && this.getSelected().index == index;
     }

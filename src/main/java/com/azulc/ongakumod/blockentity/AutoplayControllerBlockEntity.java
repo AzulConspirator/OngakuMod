@@ -84,21 +84,27 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                     if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
                         ItemStack playing = jukebox.getTheItem();
                         if (playing.isEmpty()) yield -1;
-                        List<DisplayPlaylistEntry> displayList = buildCollapsedPlaylist();
-                        for (int i = 0; i < displayList.size(); i++) {
-                            if (ItemStack.isSameItem(displayList.get(i).stack(), playing)) {
-                                yield i;
+                        
+                        // CRITICAL FIX: We must search the COLLAPSED list, not the raw one
+                        List<DisplayPlaylistEntry> collapsedList = buildCollapsedPlaylist();
+                        
+                        for (int i = 0; i < collapsedList.size(); i++) {
+                            DisplayPlaylistEntry entry = collapsedList.get(i);
+                            
+                            // Check if the item type matches. 
+                            // We use the same 'key' logic you used in buildCollapsedPlaylist
+                            if (ItemStack.isSameItem(entry.stack(), playing)) {
+                                yield i; // Return the index of the row in the visual list
                             }
                         }
                     }
                     yield -1;
                 }
                 case 2 -> cachedStatus;
-                case 3 ->  
-                {
-                    yield 0;
-                }
-                case 4 -> autoplayEnabled ? 1 : 0;
+                case 3 -> autoplayEnabled ? 1 : 0;
+                case 4 -> (level != null && songStartTick != -1 && cachedStatus == 1) 
+                  ? (int)(level.getGameTime() - songStartTick) : 0;
+                case 5 -> songDurationTicks;
                 default -> 0;
             };
         }
@@ -116,7 +122,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                     level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
                 }
             }
-            if (index == 4) {
+            if (index == 3) {
                 autoplayEnabled = (value == 1);
                 // CRITICAL: Mark for sync so the UI button updates for everyone
                 AutoplayControllerBlockEntity.this.setChanged();
@@ -128,7 +134,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         @Override
         public int getCount() 
         {
-            return 5;
+            return 6;
         }
     };
     //#endregion
@@ -567,11 +573,13 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         // Simply trigger the existing queue logic
         this.playNextInQueue();
     }
-    public List<PlaylistEntry> buildPlaylist() {
-        List<PlaylistEntry> playlist = new ArrayList<>();
-        if (level == null) return playlist;
 
-        // Physical scan of racks
+    public List<PlaylistEntry> buildPlaylist() 
+    {
+        List<PlaylistEntry> playlist = new ArrayList<>();
+        // Track unique item types physically present in the racks/jukebox
+        Set<Item> physicalItemTypes = new java.util.HashSet<>();
+        // 1. Physical scan of racks
         for (BlockPos rackPos : linkedRackPositions) {
             if (!level.isLoaded(rackPos)) continue;
             if (level.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) {
@@ -579,26 +587,56 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                     ItemStack stack = rack.getItem(i);
                     if (!stack.isEmpty()) {
                         playlist.add(new PlaylistEntry(rackPos, i, stack.copy()));
+                        physicalItemTypes.add(stack.getItem());
                     }
                 }
             }
         }
-
-        // Add the disc currently in the jukebox so it doesn't "vanish" from the list
+        // 2. Add the disc currently in the jukebox
         if (this.currentlyPlayingEntry != null) {
             playlist.add(this.currentlyPlayingEntry);
+            physicalItemTypes.add(this.currentlyPlayingEntry.stack().getItem());
+        } else {
+            BlockPos jukeboxPos = findJukebox();
+            if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
+                ItemStack manualDisc = jukebox.getTheItem();
+                if (!manualDisc.isEmpty()) {
+                    playlist.add(new PlaylistEntry(BlockPos.ZERO, -1, manualDisc.copy()));
+                    physicalItemTypes.add(manualDisc.getItem());
+                }
+            }
         }
-
-        // SORT using customQueueOrder
+        //Step 3
+        boolean changed = false;
+        // A. Remove items from the queue that are no longer physically present
+        if (customQueueOrder.removeIf(item -> !physicalItemTypes.contains(item))) {
+            changed = true;
+        }
+        // B. Find the first physical item not in the queue and add it 
+        for (Item item : physicalItemTypes) {
+            if (!customQueueOrder.contains(item)) {
+                customQueueOrder.add(item);
+                changed = true;
+                break; // Stop after finding the first new one
+            }
+        }
+        if (changed) {
+            this.setChanged();
+        }
+        // SORT
         playlist.sort((a, b) -> {
             int indexA = customQueueOrder.indexOf(a.stack().getItem());
             int indexB = customQueueOrder.indexOf(b.stack().getItem());
-            if (indexA != -1 && indexB != -1) return Integer.compare(indexA, indexB);
-            if (indexA != -1) return -1;
-            if (indexB != -1) return 1;
-            return a.rackPos().compareTo(b.rackPos());
+            //
+            if (indexA != -1 && indexB != -1) {
+                int queueComp = Integer.compare(indexA, indexB);
+                if (queueComp != 0) return queueComp;
+            }
+            //
+            int rackCompare = a.rackPos().compareTo(b.rackPos());
+            if (rackCompare != 0) return rackCompare;
+            return Integer.compare(a.slotIndex(), b.slotIndex());
         });
-
         return playlist;
     }
 
@@ -620,25 +658,25 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                 map.put(key,new DisplayPlaylistEntry(stack.copy(),1));
             }
         }
-        broadcastPlaylistUpdate();
+        //broadcastPlaylistUpdate();
         return new ArrayList<>(map.values());
     }
 
     // 3. Update broadcast to use the SORTED list
     public void broadcastPlaylistUpdate() {
-    if (level == null || level.isClientSide) return;
+        if (level == null || level.isClientSide) return;
 
-    List<ItemStack> sortedStacks = new ArrayList<>();
-    for (PlaylistEntry entry : buildPlaylist()) {
-        sortedStacks.add(entry.stack());
+        List<ItemStack> sortedStacks = new ArrayList<>();
+        for (PlaylistEntry entry : buildPlaylist()) {
+            sortedStacks.add(entry.stack());
+        }
+
+        PacketDistributor.sendToPlayersTrackingChunk(
+            (ServerLevel) level, 
+            new ChunkPos(worldPosition), 
+            new SyncPlaylistPayload(sortedStacks)
+        );
     }
-
-    PacketDistributor.sendToPlayersTrackingChunk(
-        (ServerLevel) level, 
-        new ChunkPos(worldPosition), 
-        new SyncPlaylistPayload(sortedStacks)
-    );
-}
 
     public void toggleAutoplay() 
     {
