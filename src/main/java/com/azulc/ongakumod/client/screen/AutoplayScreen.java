@@ -1,10 +1,12 @@
 package com.azulc.ongakumod.client.screen;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.client.screen.widget.MusicListWidget;
 import com.azulc.ongakumod.container.AutoplayMenu;
+import com.azulc.ongakumod.network.ManagePlaylistPayload;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -12,7 +14,6 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
@@ -21,9 +22,6 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.Item;
 import net.neoforged.neoforge.network.PacketDistributor;
 
-import com.azulc.ongakumod.network.ManagePlaylistPayload;
-import com.azulc.ongakumod.network.PlayDiscPayload;
-import com.azulc.ongakumod.network.StopDiscPayload;
 
 public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu> 
 {
@@ -78,35 +76,34 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         // STOP (Index 2: Stop/Pause)
         int startX = this.leftPos + 4;
         int startY = this.topPos + 130;
-        int spacing = 21; // 20px button + 1px gap
-
+        int spacing = 21;
         // 1. STOP
         this.addRenderableWidget(new IconButton(startX, startY, 20, 20, 2, false, 
             Component.literal("Stop"), (b) -> {
-            PacketDistributor.sendToServer(new StopDiscPayload(this.menu.getBlockPos()));
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.STOP,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
 
         // 2. PLAY
         this.addRenderableWidget(new IconButton(startX + spacing, startY, 20, 20, 0, false, 
             Component.literal("Play"), (b) -> {
-                MusicListWidget.MusicEntry selected = this.musicList.getSelected();
-                if (selected != null) {
-                    this.setSelectedDisc(selected.index); 
-                    this.musicList.refreshList(this.menu.getSyncedDiscs());
-                }
+            MusicListWidget.MusicEntry selected = this.musicList.getSelected();
+            if (selected != null) {
+                this.setSelectedDisc(selected.index); 
+                this.musicList.refreshList(this.menu.getSyncedDiscs());
+            }
         }));
         // 3. SKIP
         this.addRenderableWidget(new IconButton(startX + (spacing * 2), startY, 20, 20, 1, false, 
             Component.literal("Skip"), (b) -> {
-            PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.SKIP));
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.SKIP,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
 
         // 4. AUTOPLAY (Indicator in corner)
         this.addRenderableWidget(new IconButton(startX + (spacing * 3), startY, 20, 20, 3, true, 
             Component.literal("Autoplay"), (b) -> {
-            PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY));
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
     }
@@ -115,11 +112,10 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
     {
         return this.menu;
     }
-    
+
     public void setSelectedDisc(int index) 
     {
-        BlockPos pos = this.menu.getBlockPos();
-        PacketDistributor.sendToServer(new PlayDiscPayload(pos, index));
+        PacketDistributor.sendToServer(new ManagePlaylistPayload(this.menu.getBlockPos(), "", ManagePlaylistPayload.Action.PLAY,Optional.of(index)));         
     }
 
     @Override

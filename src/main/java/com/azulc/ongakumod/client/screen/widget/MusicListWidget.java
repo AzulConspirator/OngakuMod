@@ -1,6 +1,7 @@
 package com.azulc.ongakumod.client.screen.widget;
 
 import java.util.List;
+import java.util.Optional;
 
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
@@ -236,7 +237,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         }
 
         private void sendAction(BlockPos pos, String name, ManagePlaylistPayload.Action action) {
-            PacketDistributor.sendToServer(new ManagePlaylistPayload(pos, name, action));
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(pos, name, action,Optional.empty()));
         }
 
         @Override

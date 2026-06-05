@@ -5,31 +5,11 @@ import com.azulc.ongakumod.util.PlaylistHelper;
 
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public class ServerPayloadHandler {
-    public static void handlePlayDisc(final PlayDiscPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
-                Level level = player.level();
-                if (level.getBlockEntity(payload.controllerPos()) instanceof AutoplayControllerBlockEntity controller) {
-                    controller.tryPlayDisc(payload.slotIndex());
-                }
-            }
-        });
-    }
-    public static void handleStopDisc(final StopDiscPayload payload, final IPayloadContext context) {
-        context.enqueueWork(() -> {
-            if (context.player() instanceof ServerPlayer player) {
-                if (player.level().getBlockEntity(payload.controllerPos()) instanceof AutoplayControllerBlockEntity controller) {
-                    controller.StopJukebox();
-                }
-            }
-        });
-    }
     public static void handlePlaylistAction(final ManagePlaylistPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
             Level level = context.player().level();
@@ -41,6 +21,11 @@ public class ServerPayloadHandler {
                     case MOVE_UP -> controller.moveInQueue(item, -1);
                     case MOVE_DOWN -> controller.moveInQueue(item, 1);
                     case SKIP -> controller.playNextInQueue();
+                    case STOP -> controller.StopJukebox();
+                    case PLAY -> {    
+                        int slot = payload.slotIndex().orElseThrow(() -> new IllegalArgumentException("PLAY requires a slot index"));
+                        controller.tryPlayDisc(slot);
+                    }
                 }
                 controller.setChanged();
                 PlaylistHelper.broadcastPlaylistUpdate(controller); 

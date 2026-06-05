@@ -17,9 +17,7 @@ import com.azulc.ongakumod.container.DiscContainer;
 import com.azulc.ongakumod.item.TuningWrenchItem;
 import com.azulc.ongakumod.network.ClientPayloadHandler;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
-import com.azulc.ongakumod.network.PlayDiscPayload;
 import com.azulc.ongakumod.network.ServerPayloadHandler;
-import com.azulc.ongakumod.network.StopDiscPayload;
 import com.azulc.ongakumod.network.SyncPlaylistPayload;
 import com.mojang.logging.LogUtils;
 
@@ -82,13 +80,13 @@ public class OngakuMod
     public static final DeferredItem<BlockItem> DISC_BOX_ITEM                                                                       = ITEMS.registerSimpleBlockItem("disc_box", DISC_BOX);
     public static final DeferredBlock<Block> DISC_WALL_RACK                                                                         = BLOCKS.register("disc_wallmount", () -> new DiscRackWallBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
     public static final DeferredItem<BlockItem> DISC_WALL_RACK_ITEM                                                                 = ITEMS.registerSimpleBlockItem("disc_wallmount", DISC_WALL_RACK);
-    public static final DeferredBlock<SpeakerBlock> SPEAKER                                                                        = BLOCKS.register("speaker", () -> new SpeakerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
-    public static final DeferredItem<BlockItem> SPEAKER_ITEM                                                                        = ITEMS.registerSimpleBlockItem("speaker", SPEAKER);
-    //
-    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SpeakerBlockEntity>> SPEAKER_BLOCK_ENTITY                = BLOCK_ENTITIES.register("speaker_block_entity", () -> BlockEntityType.Builder.of(SpeakerBlockEntity::new, BLOCKS.getEntries().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<DiscRackBlockEntity>> DISCRACK_BLOCK_ENTITY              = BLOCK_ENTITIES.register("discrack_block_entity", () -> BlockEntityType.Builder.of(DiscRackBlockEntity::new, BLOCKS.getEntries().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
+    // Speaker
+    public static final DeferredBlock<SpeakerBlock> SPEAKER                                                                         = BLOCKS.register("speaker", () -> new SpeakerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
+    public static final DeferredItem<BlockItem> SPEAKER_ITEM                                                                        = ITEMS.registerSimpleBlockItem("speaker", SPEAKER);
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<SpeakerBlockEntity>> SPEAKER_BLOCK_ENTITY                = BLOCK_ENTITIES.register("speaker_block_entity", () -> BlockEntityType.Builder.of(SpeakerBlockEntity::new, BLOCKS.getEntries().stream().map(DeferredHolder::get).toArray(Block[]::new)).build(null));
     // Controller
-    public static final DeferredBlock<Block> AUTOPLAY_CONTROLLER                                                                    = BLOCKS.register("autoplay_controller", () -> new AutoplayControllerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));//() -> new AutoplayControllerBlock(BlockBehaviour.Properties.copy(Blocks.JUKEBOX)));
+    public static final DeferredBlock<Block> AUTOPLAY_CONTROLLER                                                                    = BLOCKS.register("autoplay_controller", () -> new AutoplayControllerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
     public static final DeferredItem<BlockItem> AUTOPLAY_CONTROLLER_ITEM                                                            = ITEMS.register("autoplay_controller", () -> new BlockItem(AUTOPLAY_CONTROLLER.get(), new BlockItem.Properties()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<AutoplayControllerBlockEntity>> AUTOPLAY_BLOCK_ENTITY    = BLOCK_ENTITIES.register("autoplay_block_entity", () -> BlockEntityType.Builder.of(AutoplayControllerBlockEntity::new, AUTOPLAY_CONTROLLER.get()).build(null));
     //Wrench
@@ -119,7 +117,6 @@ public class OngakuMod
         NeoForge.EVENT_BUS.register(this);
         modEventBus.addListener(this::registerNetworking);
         //modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
-        
     }
     
     private void commonSetup(FMLCommonSetupEvent event) 
@@ -137,16 +134,6 @@ public class OngakuMod
         final PayloadRegistrar registrar = event.registrar(MODID);
         
         // Register the packet to only flow from Client -> Server
-        registrar.playToServer(
-            PlayDiscPayload.TYPE, 
-            PlayDiscPayload.STREAM_CODEC, 
-            ServerPayloadHandler::handlePlayDisc
-        );
-        registrar.playToServer(
-            StopDiscPayload.TYPE, 
-            StopDiscPayload.STREAM_CODEC, 
-            ServerPayloadHandler::handleStopDisc
-        );
         registrar.playToClient(
             SyncPlaylistPayload.TYPE,
             SyncPlaylistPayload.STREAM_CODEC,
