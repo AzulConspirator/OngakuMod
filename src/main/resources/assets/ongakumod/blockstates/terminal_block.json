@@ -1,10 +1,35 @@
 {
-  "variants": 
-  {
-    "": {"model": "ongakumod:block/terminal_block"},
-    "facing=north": {"model": "ongakumod:block/terminal_block"},
-    "facing=east": {"model": "ongakumod:block/terminal_block","y":90 },
-    "facing=south": {"model": "ongakumod:block/terminal_block","y": 180},
-    "facing=west": {"model": "ongakumod:block/terminal_block","y": 270}
+  "variants": {
+    "face=floor,facing=north": {
+      "model": "ongakumod:block/terminal_block"
+    },
+    "face=floor,facing=east": {
+      "model": "ongakumod:block/terminal_block",
+      "y": 90
+    },
+    "face=floor,facing=south": {
+      "model": "ongakumod:block/terminal_block",
+      "y": 180
+    },
+    "face=floor,facing=west": {
+      "model": "ongakumod:block/terminal_block",
+      "y": 270
+    },
+
+    "face=wall,facing=north": {
+      "model": "ongakumod:block/terminal_block_wall"
+    },
+    "face=wall,facing=east": {
+      "model": "ongakumod:block/terminal_block_wall",
+      "y": 90
+    },
+    "face=wall,facing=south": {
+      "model": "ongakumod:block/terminal_block_wall",
+      "y": 180
+    },
+    "face=wall,facing=west": {
+      "model": "ongakumod:block/terminal_block_wall",
+      "y": 270
+    }
   }
 }

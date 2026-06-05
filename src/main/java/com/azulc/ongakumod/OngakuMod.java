@@ -152,10 +152,5 @@ public class OngakuMod
             ManagePlaylistPayload.STREAM_CODEC,
             ServerPayloadHandler::handlePlaylistAction
         );
-        registrar.playToServer(
-            ManagePlaylistPayload.TYPE,
-            ManagePlaylistPayload.STREAM_CODEC,
-            ServerPayloadHandler::handleTerminalAction
-        );
     }
 }

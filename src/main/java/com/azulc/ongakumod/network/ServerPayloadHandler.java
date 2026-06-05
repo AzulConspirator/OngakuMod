@@ -1,6 +1,5 @@
 package com.azulc.ongakumod.network;
 
-import java.util.Optional;
 import java.util.UUID;
 
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
@@ -70,16 +69,12 @@ public class ServerPayloadHandler {
                     return; // Operations completed successfully on the live block, exit early.
                 }
             }
-
-            // --- SPLIT BRAIN RESOLUTION ROUTE ---
-            // Execution hits here ONLY if chunk is unloaded. Read from snapshot instead:
             ControllerRegistry registry = ControllerRegistry.get(serverLevel);
             UUID netId = payload.networkId().orElseThrow(() -> new IllegalArgumentException("PLAY requires a slot index"));
             ControllerSnapshot snapshotOpt = registry.getSnapshot(netId); // Fixed method reference
             
             if (snapshotOpt !=null) {
                 ControllerSnapshot snapshot = snapshotOpt;
-                
                 if(payload.action() == Action.PLAY) {
                      // Local client audio fallback emission point
                      serverLevel.playSound(null, player.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.RECORDS, 1.0f, 1.0f);

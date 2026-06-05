@@ -1,5 +1,7 @@
 package com.azulc.ongakumod.block;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import com.azulc.ongakumod.blockentity.TerminalBlockEntity;
 import com.azulc.ongakumod.container.TerminalMenu;
@@ -34,15 +36,17 @@ import net.minecraft.world.level.block.state.properties.AttachFace;
 import net.minecraft.world.level.block.state.properties.BlockStateProperties;
 import net.minecraft.world.level.block.state.properties.DirectionProperty;
 import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.Shapes;
 import net.minecraft.world.phys.shapes.VoxelShape;
 
 public class TerminalBlock extends HorizontalDirectionalBlock implements EntityBlock  {
     
     public static final MapCodec<TerminalBlock> CODEC = simpleCodec(TerminalBlock::new);
-    public static final VoxelShape SHAPE_FLOOR = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D);
-    public static final VoxelShape SHAPE_WALL = Block.box(0.0D, 8.0D, 0.0D, 16.0D, 16.0D, 16.0D);
+    public static final VoxelShape SHAPE_FLOOR = Block.box(1, 0, 6, 15, 8, 10);
+    public static final VoxelShape SHAPE_WALL = Block.box(1, 4, 12, 15, 12, 16);
 
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
     public static final EnumProperty<AttachFace> FACE = BlockStateProperties.ATTACH_FACE;
@@ -67,15 +71,11 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
     public BlockState getStateForPlacement(BlockPlaceContext context)
     {
         Direction clickedFace = context.getClickedFace();
-        if(clickedFace == Direction.DOWN)
-        {
-            return null;
-        }
         if(clickedFace == Direction.UP)
         {
             return defaultBlockState().setValue(FACE,AttachFace.FLOOR).setValue(FACING,context.getHorizontalDirection().getOpposite());
         }
-        return defaultBlockState().setValue(FACE,AttachFace.WALL).setValue(FACING,clickedFace.getOpposite());
+        return defaultBlockState().setValue(FACE,AttachFace.WALL).setValue(FACING,clickedFace);
     }
         
     protected boolean hasAnalogOutputSignal(BlockState pState) {
@@ -89,18 +89,22 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
     @Override
     public VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,CollisionContext context)
     {
-/*         if(state.getValue(FACE) == AttachFace.WALL)
-        {
-            return switch(state.getValue(FACING))
-            {
-                case NORTH -> NORTH_SHAPE;
-                case SOUTH -> SOUTH_SHAPE;
-                case EAST -> EAST_SHAPE;
-                case WEST -> WEST_SHAPE;
-                default -> FLOOR_SHAPE;
-            };
-        } */
-        return SHAPE_FLOOR;
+        return rotateShape((state.getValue(FACE) == AttachFace.WALL)? SHAPE_WALL : SHAPE_FLOOR, state.getValue(FACING));
+    }
+
+    private static VoxelShape rotateShape(VoxelShape shape, Direction direction) {
+        if (direction == Direction.NORTH) return shape;
+        int rotations = (direction.get2DDataValue() - Direction.NORTH.get2DDataValue() + 4) % 4;
+        VoxelShape rotated = shape;
+        for (int i = 0; i < rotations; i++) {
+            final List<AABB> boxes = new ArrayList<>();
+            rotated.forAllBoxes((minX, minY, minZ, maxX, maxY, maxZ) -> {boxes.add(new AABB(1 - maxZ, minY, minX,1 - minZ, maxY, maxX ));});
+            rotated = Shapes.empty();
+            for (AABB box : boxes) {
+                rotated = Shapes.or(rotated,Shapes.box(box.minX, box.minY, box.minZ,box.maxX, box.maxY, box.maxZ));
+            }
+        }
+        return rotated;
     }
 
     @Override

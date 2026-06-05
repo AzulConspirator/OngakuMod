@@ -19,7 +19,7 @@ public record ManagePlaylistPayload(Optional<BlockPos> pos, Optional<UUID> netwo
     public enum Action { TOGGLE_AUTOPLAY, MOVE_UP, MOVE_DOWN, EXCLUDE,SKIP,STOP,PLAY }
 
     public static final StreamCodec<ByteBuf, ManagePlaylistPayload> STREAM_CODEC = StreamCodec.composite(
-             ByteBufCodecs.optional(BlockPos.STREAM_CODEC), ManagePlaylistPayload::pos,
+            ByteBufCodecs.optional(BlockPos.STREAM_CODEC), ManagePlaylistPayload::pos,
             ByteBufCodecs.optional(UUIDUtil.STREAM_CODEC), ManagePlaylistPayload::networkId,
             ByteBufCodecs.STRING_UTF8, ManagePlaylistPayload::itemRegistryName,
             ByteBufCodecs.idMapper(i -> Action.values()[i], Action::ordinal), ManagePlaylistPayload::action,
