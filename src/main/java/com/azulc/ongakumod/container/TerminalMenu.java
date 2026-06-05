@@ -87,29 +87,5 @@ public class TerminalMenu extends AbstractContainerMenu {
     public ItemStack quickMoveStack(Player player, int index) {
         return ItemStack.EMPTY; 
     }
-    @Override
-    public void broadcastChanges() {
-        super.broadcastChanges();
-        
-        // Server-side heartbeat emission routine tracking down active sessions
-        if (this._player.level() instanceof ServerPlayer serverPlayer) {
-            UUID terminalAudioSessionId = UUID.nameUUIDFromBytes((serverPlayer.getUUID().toString() + "_" + this.getNetworkId().toString()).getBytes());
-            
-            if (this.getTerminalBlockPos().isPresent()) {
-                ServerStorageSoundHandler.updateKeepAlive(
-                    terminalAudioSessionId, 
-                    serverPlayer.level(), 
-                    Vec3.atCenterOf(this.getTerminalBlockPos().get()), 
-                    () -> {}
-                );
-            } else {
-                ServerStorageSoundHandler.updateKeepAlive(
-                    terminalAudioSessionId, 
-                    serverPlayer.level(), 
-                    serverPlayer.position(), 
-                    () -> {}
-                );
-            }
-        }
-    }
+
 }
