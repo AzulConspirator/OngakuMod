@@ -1,0 +1,174 @@
+package com.azulc.ongakumod.block;
+
+import java.util.UUID;
+import com.azulc.ongakumod.blockentity.TerminalBlockEntity;
+import com.azulc.ongakumod.container.TerminalMenu;
+import com.azulc.ongakumod.util.ControllerRegistry;
+import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
+import com.mojang.serialization.MapCodec;
+import net.minecraft.core.BlockPos;
+import net.minecraft.core.Direction;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.SimpleMenuProvider;
+import net.minecraft.world.entity.LivingEntity;
+import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
+import net.minecraft.world.item.context.BlockPlaceContext;
+import net.minecraft.world.level.BlockGetter;
+import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.EntityBlock;
+import net.minecraft.world.level.block.HorizontalDirectionalBlock;
+import net.minecraft.world.level.block.RenderShape;
+import net.minecraft.world.level.block.entity.BlockEntity;
+import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.block.state.StateDefinition;
+import net.minecraft.world.level.block.state.properties.AttachFace;
+import net.minecraft.world.level.block.state.properties.BlockStateProperties;
+import net.minecraft.world.level.block.state.properties.DirectionProperty;
+import net.minecraft.world.level.block.state.properties.EnumProperty;
+import net.minecraft.world.phys.BlockHitResult;
+import net.minecraft.world.phys.shapes.CollisionContext;
+import net.minecraft.world.phys.shapes.VoxelShape;
+
+public class TerminalBlock extends HorizontalDirectionalBlock implements EntityBlock  {
+    
+    public static final MapCodec<TerminalBlock> CODEC = simpleCodec(TerminalBlock::new);
+    public static final VoxelShape SHAPE_FLOOR = Block.box(0.0D, 0.0D, 0.0D, 16.0D, 8.0D, 16.0D);
+    public static final VoxelShape SHAPE_WALL = Block.box(0.0D, 8.0D, 0.0D, 16.0D, 16.0D, 16.0D);
+
+    public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
+    public static final EnumProperty<AttachFace> FACE = BlockStateProperties.ATTACH_FACE;
+    
+    public MapCodec<TerminalBlock> codec() {
+        return CODEC;
+    }
+    
+    public TerminalBlock(Properties properties) 
+    {
+        super(properties);
+        this.registerDefaultState(this.stateDefinition.any().setValue(FACING, Direction.NORTH).setValue(FACE, AttachFace.FLOOR));
+    }
+
+    @Override
+    protected void createBlockStateDefinition(StateDefinition.Builder<Block, BlockState> builder)
+    {
+        builder.add(FACING, FACE);
+    }
+
+    @Override
+    public BlockState getStateForPlacement(BlockPlaceContext context)
+    {
+        Direction clickedFace = context.getClickedFace();
+        if(clickedFace == Direction.DOWN)
+        {
+            return null;
+        }
+        if(clickedFace == Direction.UP)
+        {
+            return defaultBlockState().setValue(FACE,AttachFace.FLOOR).setValue(FACING,context.getHorizontalDirection().getOpposite());
+        }
+        return defaultBlockState().setValue(FACE,AttachFace.WALL).setValue(FACING,clickedFace.getOpposite());
+    }
+        
+    protected boolean hasAnalogOutputSignal(BlockState pState) {
+        return true;
+    }
+    
+    public RenderShape getRenderShape(BlockState pState) {
+        return RenderShape.MODEL;
+    }
+    
+    @Override
+    public VoxelShape getShape(BlockState state,BlockGetter level,BlockPos pos,CollisionContext context)
+    {
+/*         if(state.getValue(FACE) == AttachFace.WALL)
+        {
+            return switch(state.getValue(FACING))
+            {
+                case NORTH -> NORTH_SHAPE;
+                case SOUTH -> SOUTH_SHAPE;
+                case EAST -> EAST_SHAPE;
+                case WEST -> WEST_SHAPE;
+                default -> FLOOR_SHAPE;
+            };
+        } */
+        return SHAPE_FLOOR;
+    }
+
+    @Override
+    public BlockEntity newBlockEntity(BlockPos blockPos, BlockState blockState) {
+        return new TerminalBlockEntity(blockPos, blockState);
+    }
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!state.is(newState.getBlock())) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof TerminalBlockEntity terminal && terminal.getNetworkId() != null) {
+                // Package UUID back into the drop
+                ItemStack dropStack = new ItemStack(this);
+                CompoundTag tag = new CompoundTag();
+                tag.putUUID("controller_id", terminal.getNetworkId());
+                dropStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+                
+                Block.popResource(level, pos, dropStack);
+            }
+            super.onRemove(state, level, pos, newState, isMoving);
+        }
+    }
+    @Override
+    public void setPlacedBy(Level level, BlockPos pos, BlockState state, LivingEntity placer, ItemStack stack) {
+        super.setPlacedBy(level, pos, state, placer, stack);
+        if (!level.isClientSide) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof TerminalBlockEntity terminalBE) {
+                // Read from the item's CustomData component
+                CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
+                CompoundTag tag = customData.copyTag();
+                if (tag.hasUUID("controller_id")) {
+                    UUID id = tag.getUUID("controller_id");
+                    terminalBE.setNetworkId(id); // Ensure your BlockEntity has this setter and calls setChanged()
+                }
+            }
+        }
+    }
+
+    // Ensure player right-clicking the block also opens the menu properly:
+    @Override
+    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
+        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof TerminalBlockEntity terminal) {
+                
+                // Defensively fail early if the block entity has no linked network ID yet
+                if (terminal.getNetworkId() == null) {
+                    player.displayClientMessage(Component.literal("Terminal unlinked!"), true);
+                    return ItemInteractionResult.FAIL;
+                }
+
+                serverPlayer.openMenu(new SimpleMenuProvider(
+                    (id, inv, p) -> new TerminalMenu(id, inv, terminal), 
+                    Component.literal("Vinyl Terminal")
+                ), buf -> {
+                    buf.writeBoolean(false);
+                    buf.writeBlockPos(pos);
+                    ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(terminal.getNetworkId());
+                    if (currentSnapshot != null) {
+                        buf.writeBoolean(true);
+                        currentSnapshot.write(buf);
+                    } else {
+                        buf.writeBoolean(false);
+                    }
+                });
+            }
+        }
+        return ItemInteractionResult.SUCCESS;
+    }
+}

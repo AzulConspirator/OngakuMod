@@ -45,7 +45,7 @@ import com.azulc.ongakumod.util.PlaylistHelper.PlaylistEntry;
 
 public class AutoplayControllerBlockEntity extends BlockEntity 
 {
-    private UUID networkId;
+    private UUID networkId = UUID.randomUUID();
     private int tickCounter = 0;
     public PlaylistEntry currentlyPlayingEntry = null;
     public int currentPlaylistIndex = -1;
@@ -131,7 +131,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     public void onLoad()
     {
         super.onLoad();
-        getnetworkId(this);
+        getNetworkId(this);
         if(level instanceof ServerLevel serverLevel)
         {
             ControllerRegistry.get(serverLevel).register(networkId,GlobalPos.of(serverLevel.dimension(),worldPosition));
@@ -155,7 +155,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             entity.validateAndProcess(level,pos);
             if(level instanceof ServerLevel serverLevel)
                 {
-                    ControllerRegistry.get(serverLevel).updateSnapshot(getnetworkId(entity),createSnapshot(entity));
+                    ControllerRegistry.get(serverLevel).updateSnapshot(getNetworkId(entity),createSnapshot(entity));
                 }
         }
         // Autoplay Engine (Runs every tick)
@@ -315,7 +315,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
         return -1;
     }
-    public static UUID getnetworkId(AutoplayControllerBlockEntity Ctrl)
+    public static UUID getNetworkId(AutoplayControllerBlockEntity Ctrl)
     {
         if (Ctrl.networkId == null) 
         {

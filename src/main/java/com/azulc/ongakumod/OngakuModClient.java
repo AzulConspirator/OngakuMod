@@ -4,8 +4,10 @@ import com.azulc.ongakumod.client.AutoplayControllerRenderer;
 import com.azulc.ongakumod.client.DiscRackRenderer;
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.client.screen.DiscRackScreen;
+import com.azulc.ongakumod.client.screen.TerminalScreen;
 import com.azulc.ongakumod.util.DiscColorCache;
 
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
 
@@ -26,6 +28,7 @@ public class OngakuModClient {
     public static void registerScreens(RegisterMenuScreensEvent event) {
         event.register(OngakuMod.DISC_MENU.get(), DiscRackScreen::new);
         event.register(OngakuMod.AUTOPLAY_MENU.get(), AutoplayScreen::new);
+        event.register(OngakuMod.TERMINAL_MENU.get(),TerminalScreen::new);
     }
 
     @SubscribeEvent

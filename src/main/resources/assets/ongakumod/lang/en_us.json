@@ -11,5 +11,13 @@
   "block.ongakumod.disc_box": "Disc Storage Box",
   "block.ongakumod.disc_wallmount": "Disc Wall Mount",
 
-  "block.ongakumod.speaker": "Speaker"
+  "block.ongakumod.speaker": "Speaker",
+
+  "tuningfork.ongakumod.positionsaved": "Controller Position Saved!",
+  "tuningfork.ongakumod.noposition": "No Controller Saved on Wrench!",
+  "tuningfork.ongakumod.wrongdimension": "Wrong Dimension!",
+  "tuningfork.ongakumod.storagelinked": "Storage Linked!",
+  "tuningfork.ongakumod.storageunlink": "Storage Unlinked!",
+  "tuningfork.ongakumod.speakerlinked": "Speaker Linked!",
+  "tuningfork.ongakumod.speakerunlinked": "Speaker Unlinked!"
 }

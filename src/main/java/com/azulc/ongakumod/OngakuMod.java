@@ -9,11 +9,15 @@ import com.azulc.ongakumod.block.DiscRackBlock;
 import com.azulc.ongakumod.block.DiscRackBoxBlock;
 import com.azulc.ongakumod.block.DiscRackWallBlock;
 import com.azulc.ongakumod.block.SpeakerBlock;
+import com.azulc.ongakumod.block.TerminalBlock;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.azulc.ongakumod.blockentity.SpeakerBlockEntity;
+import com.azulc.ongakumod.blockentity.TerminalBlockEntity;
 import com.azulc.ongakumod.container.AutoplayMenu;
 import com.azulc.ongakumod.container.DiscContainer;
+import com.azulc.ongakumod.container.TerminalMenu;
+import com.azulc.ongakumod.item.TerminalBlockItem;
 import com.azulc.ongakumod.item.TuningWrenchItem;
 import com.azulc.ongakumod.network.ClientPayloadHandler;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
@@ -40,7 +44,6 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModContainer;
-import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -61,17 +64,22 @@ public class OngakuMod
     public static final DeferredRegister<MenuType<?>> MENUS                         = DeferredRegister.create(Registries.MENU, MODID);
     public static final DeferredRegister<BlockEntityType<?>> BLOCK_ENTITIES         = DeferredRegister.create(Registries.BLOCK_ENTITY_TYPE, MODID);
     public static final DeferredRegister<CreativeModeTab> CREATIVE_MODE_TABS        = DeferredRegister.create(Registries.CREATIVE_MODE_TAB, MODID);
-    public static final DeferredRegister<DataComponentType<?>> DATA_COMPONENT_TYPES = DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, "ongaku");
-   
+    public static final DeferredRegister<DataComponentType<?>> DATA_COMPONENT_TYPES = DeferredRegister.create(Registries.DATA_COMPONENT_TYPE, MODID);
     // Container
-    public static final DeferredHolder<MenuType<?>, MenuType<DiscContainer>> DISC_MENU                                              = MENUS.register("disc_rack", () -> new MenuType<>(DiscContainer::new, FeatureFlagSet.of()));
+    public static final DeferredHolder<MenuType<?>, MenuType<DiscContainer>> DISC_MENU    = 
+    MENUS.register("disc_rack",
+    () -> new MenuType<>(DiscContainer::new, FeatureFlagSet.of()));
     public static final DeferredHolder<MenuType<?>, MenuType<AutoplayMenu>> AUTOPLAY_MENU = 
     MENUS.register("autoplay_controller", 
         () -> IMenuTypeExtension.create((windowId, inv, data) -> {
             BlockPos pos = data.readBlockPos();
-            // 1.21.1 helper to read a list of items from the network
             List<ItemStack> discs = ItemStack.OPTIONAL_LIST_STREAM_CODEC.decode(data); 
             return new AutoplayMenu(windowId, inv, pos, discs);
+        }));
+    public static final DeferredHolder<MenuType<?>, MenuType<TerminalMenu>> TERMINAL_MENU = 
+    MENUS.register("terminal", 
+        () -> IMenuTypeExtension.create((windowId, inv, data) -> {
+            return new TerminalMenu(windowId, inv, data);
         }));
     // Disc Rack
     public static final DeferredBlock<DiscRackBlock> DISC_RACK                                                                      = BLOCKS.register("disc_rack", () -> new DiscRackBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
@@ -89,12 +97,18 @@ public class OngakuMod
     public static final DeferredBlock<Block> AUTOPLAY_CONTROLLER                                                                    = BLOCKS.register("autoplay_controller", () -> new AutoplayControllerBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
     public static final DeferredItem<BlockItem> AUTOPLAY_CONTROLLER_ITEM                                                            = ITEMS.register("autoplay_controller", () -> new BlockItem(AUTOPLAY_CONTROLLER.get(), new BlockItem.Properties()));
     public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<AutoplayControllerBlockEntity>> AUTOPLAY_BLOCK_ENTITY    = BLOCK_ENTITIES.register("autoplay_block_entity", () -> BlockEntityType.Builder.of(AutoplayControllerBlockEntity::new, AUTOPLAY_CONTROLLER.get()).build(null));
-    //Wrench
+    // Terminal
+    public static final DeferredBlock<Block> TERMINAL_BLOCK                                                                         = BLOCKS.register("terminal_block", () -> new TerminalBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
+    public static final DeferredItem<BlockItem> TERMINAL_BLOCK_ITEM                                                                 = ITEMS.register("terminal_block", () -> new TerminalBlockItem(TERMINAL_BLOCK.get(), new BlockItem.Properties()));
+    public static final DeferredHolder<BlockEntityType<?>, BlockEntityType<TerminalBlockEntity>> TERMINAL_BLOCK_ENTITY              = BLOCK_ENTITIES.register("terminal_block_entity", () -> BlockEntityType.Builder.of(TerminalBlockEntity::new, TERMINAL_BLOCK.get()).build(null));
+    // Wrench
     public static final DeferredItem<Item> TUNING_WRENCH                                                                            = ITEMS.register("tuning_wrench", () -> new TuningWrenchItem(new Item.Properties().stacksTo(1)));
     public static final DeferredHolder<DataComponentType<?>, DataComponentType<GlobalPos>> SAVED_LOCATION                           = DATA_COMPONENT_TYPES.register("saved_location", () -> DataComponentType.<GlobalPos>builder().persistent(GlobalPos.CODEC).networkSynchronized(GlobalPos.STREAM_CODEC).build());
     // Creative Tab
-    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ONGAKU_TAB = CREATIVE_MODE_TABS.register("ongaku_tab", () -> CreativeModeTab.builder().title(Component.translatable("itemGroup.ongakumod")).icon(() -> 
-    new ItemStack(DISC_RACK_ITEM.get()))
+    public static final DeferredHolder<CreativeModeTab, CreativeModeTab> ONGAKU_TAB = 
+    CREATIVE_MODE_TABS.register("ongaku_tab", () -> CreativeModeTab.builder()
+    .title(Component.translatable("itemGroup.ongakumod"))
+    .icon(() -> new ItemStack(DISC_RACK_ITEM.get()))
     .displayItems((parameters, output) -> {
         output.accept(TUNING_WRENCH.get());
         output.accept(AUTOPLAY_CONTROLLER_ITEM.get());
@@ -102,12 +116,13 @@ public class OngakuMod
         output.accept(DISC_BOX_ITEM.get());
         output.accept(DISC_WALL_RACK_ITEM.get());
         output.accept(SPEAKER_ITEM.get());
-    }).build());
+        output.accept(TERMINAL_BLOCK_ITEM.get());
+    })
+    .build());
     //
-
     public OngakuMod(IEventBus modEventBus, ModContainer modContainer) 
     {
-        modEventBus.addListener(this::commonSetup);
+        //modEventBus.addListener(this::commonSetup);
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         MENUS.register(modEventBus);
@@ -118,22 +133,15 @@ public class OngakuMod
         modEventBus.addListener(this::registerNetworking);
         //modContainer.registerConfig(ModConfig.Type.COMMON, Config.SPEC);
     }
-    
-    private void commonSetup(FMLCommonSetupEvent event) 
-    {
-        LOGGER.info("HELLO FROM COMMON SETUP");
-    }
 
     @SubscribeEvent
     public void onServerStarting(ServerStartingEvent event) {
         // Do something when the server starts
-        LOGGER.info("HELLO from server starting");
+        //LOGGER.info("HELLO from server starting");
     }
     
     public void registerNetworking(RegisterPayloadHandlersEvent event) {
         final PayloadRegistrar registrar = event.registrar(MODID);
-        
-        // Register the packet to only flow from Client -> Server
         registrar.playToClient(
             SyncPlaylistPayload.TYPE,
             SyncPlaylistPayload.STREAM_CODEC,
@@ -143,6 +151,11 @@ public class OngakuMod
             ManagePlaylistPayload.TYPE,
             ManagePlaylistPayload.STREAM_CODEC,
             ServerPayloadHandler::handlePlaylistAction
+        );
+        registrar.playToServer(
+            ManagePlaylistPayload.TYPE,
+            ManagePlaylistPayload.STREAM_CODEC,
+            ServerPayloadHandler::handleTerminalAction
         );
     }
 }

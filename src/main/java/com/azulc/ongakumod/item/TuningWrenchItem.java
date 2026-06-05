@@ -41,7 +41,7 @@ public class TuningWrenchItem extends Item {
             GlobalPos globalPos = GlobalPos.of(level.dimension(), clickedPos);
             stack.set(OngakuMod.SAVED_LOCATION.get(), globalPos);
             
-            context.getPlayer().displayClientMessage(Component.literal("Controller Position Saved!"), true);
+            context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.positionsaved"), true);
             level.playSound(null, clickedPos, SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.BLOCKS, 1.0f, 1.0f);
             return InteractionResult.SUCCESS;
         }
@@ -51,32 +51,25 @@ public class TuningWrenchItem extends Item {
             GlobalPos saved = stack.get(OngakuMod.SAVED_LOCATION.get());
             
             if (saved == null) {
-                context.getPlayer().displayClientMessage(Component.literal("No Controller Saved on Wrench!"), true);
+                context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.noposition"), true);
                 return InteractionResult.FAIL;
             }
 
             if (saved.dimension() != level.dimension()) {
-                context.getPlayer().displayClientMessage(Component.literal("Wrong Dimension!"), true);
+                context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.wrongdimension"), true);
                 return InteractionResult.FAIL;
             }
-
-            // Attempt to find the saved controller in the world
             BlockEntity savedBE = level.getBlockEntity(saved.pos());
             if (savedBE instanceof AutoplayControllerBlockEntity controller) 
             {
-                // The controller now handles the logic for:
-                // - Linking a fresh rack
-                // - Unlinking if already connected
-                // - Hijacking if linked to another controller
                 boolean nowLinked = LinkHelper.addLinkedRack(controller,clickedPos);
                 if (nowLinked) {
-                    context.getPlayer().displayClientMessage(Component.literal("Rack Linked!"), true);
+                    context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.storagelinked"), true);
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.0f, 1.2f);
                 } else {
-                    context.getPlayer().displayClientMessage(Component.literal("Disconnected the Rack"), true);
+                    context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.storageunlink"), true);
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 1.0f, 0.8f);
                 }
-                // Ensure the Controller updates its UI playlist for any nearby players
                 PlaylistHelper.broadcastPlaylistUpdate(controller);
                 return InteractionResult.SUCCESS;
             }
@@ -85,32 +78,25 @@ public class TuningWrenchItem extends Item {
             GlobalPos saved = stack.get(OngakuMod.SAVED_LOCATION.get());
             
             if (saved == null) {
-                context.getPlayer().displayClientMessage(Component.literal("No Controller Saved on Wrench!"), true);
+                context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.noposition"), true);
                 return InteractionResult.FAIL;
             }
 
             if (saved.dimension() != level.dimension()) {
-                context.getPlayer().displayClientMessage(Component.literal("Wrong Dimension!"), true);
+                context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.wrongdimension"), true);
                 return InteractionResult.FAIL;
             }
-
-            // Attempt to find the saved controller in the world
             BlockEntity savedBE = level.getBlockEntity(saved.pos());
             if (savedBE instanceof AutoplayControllerBlockEntity controller) 
             {
-                // The controller now handles the logic for:
-                // - Linking a fresh rack
-                // - Unlinking if already connected
-                // - Hijacking if linked to another controller
                 boolean nowLinked = LinkHelper.addLinkedSpeaker(controller,clickedPos);
                 if (nowLinked) {
-                    context.getPlayer().displayClientMessage(Component.literal("Speaker Linked!"), true);
+                    context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.speakerlinked"), true);
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.0f, 1.2f);
                 } else {
-                    context.getPlayer().displayClientMessage(Component.literal("Disconnected the Speaker"), true);
+                    context.getPlayer().displayClientMessage(Component.translatable("tuningfork.ongakumod.speakerunlinked"), true);
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 1.0f, 0.8f);
                 }
-                // Ensure the Controller updates its UI playlist for any nearby players
                 PlaylistHelper.broadcastPlaylistUpdate(controller);
                 return InteractionResult.SUCCESS;
             }
