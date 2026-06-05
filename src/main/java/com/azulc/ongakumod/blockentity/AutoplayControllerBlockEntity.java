@@ -2,6 +2,7 @@ package com.azulc.ongakumod.blockentity;
 
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -31,8 +32,11 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 
 import com.azulc.ongakumod.OngakuMod;
+import com.azulc.ongakumod.util.ControllerRegistry;
+import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.JukeboxHelper;
 import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.PlaylistHelper;
@@ -41,6 +45,7 @@ import com.azulc.ongakumod.util.PlaylistHelper.PlaylistEntry;
 
 public class AutoplayControllerBlockEntity extends BlockEntity 
 {
+    private UUID networkId;
     private int tickCounter = 0;
     public PlaylistEntry currentlyPlayingEntry = null;
     public int currentPlaylistIndex = -1;
@@ -122,12 +127,36 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     }
     //#endregion
     //#region Server Tick
+    @Override
+    public void onLoad()
+    {
+        super.onLoad();
+        getnetworkId(this);
+        if(level instanceof ServerLevel serverLevel)
+        {
+            ControllerRegistry.get(serverLevel).register(networkId,GlobalPos.of(serverLevel.dimension(),worldPosition));
+        }
+    }
+
+    @Override
+    public void setRemoved()
+    {
+        super.setRemoved();
+        if(level instanceof ServerLevel serverLevel)
+        {
+            ControllerRegistry.get(serverLevel).unregister(networkId);
+        }
+    }
     public static void serverTick(Level level, BlockPos pos, BlockState state, AutoplayControllerBlockEntity entity) 
     {
         entity.tickCounter++;
         // Run validation every 20 ticks (1 second)
         if (entity.tickCounter % 20 == 0) {
             entity.validateAndProcess(level,pos);
+            if(level instanceof ServerLevel serverLevel)
+                {
+                    ControllerRegistry.get(serverLevel).updateSnapshot(getnetworkId(entity),createSnapshot(entity));
+                }
         }
         // Autoplay Engine (Runs every tick)
         if (entity.autoplayEnabled) {
@@ -143,6 +172,24 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                 entity.playNextInQueue();
             }
         }
+    }
+
+    public static ControllerSnapshot createSnapshot(AutoplayControllerBlockEntity Ctrl)
+    {
+        String discId = "";
+        if(Ctrl.currentlyPlayingEntry != null)
+        {
+            discId =BuiltInRegistries.ITEM.getKey(Ctrl.currentlyPlayingEntry.stack().getItem()).toString();
+        }
+        return new ControllerSnapshot(
+            Ctrl.networkId,
+            Ctrl.getBlockPos(),
+            discId,
+            Ctrl.currentPlaylistIndex,
+            Ctrl.autoplayEnabled,
+            Ctrl.songStartTick,
+            Ctrl.songDurationTicks
+        );
     }
 
     private void validateAndProcess(Level level,BlockPos pos) 
@@ -210,6 +257,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         tag.put("excludedTracks", exclusionTag);
         tag.put("queueOrder", queueTag);
         tag.putInt("CachedStatus", this.cachedStatus);
+        tag.putUUID("networkId", this.networkId);
     }
 
     @Override
@@ -231,6 +279,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         currentPlaylistIndex = tag.getInt("CurrentPlayingSlot");
         this.cachedStatus = tag.getInt("CachedStatus");
         this.autoplayEnabled = tag.getBoolean("autoplayEnabled");
+        this.networkId = tag.getUUID("networkId");
         customQueueOrder.clear();
         ListTag queueTag = tag.getList("queueOrder", 8); // 8 is the ID for StringTag
         for (int i = 0; i < queueTag.size(); i++) 
@@ -265,6 +314,15 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             }
         }
         return -1;
+    }
+    public static UUID getnetworkId(AutoplayControllerBlockEntity Ctrl)
+    {
+        if (Ctrl.networkId == null) 
+        {
+            Ctrl.networkId = UUID.randomUUID();
+        }
+        Ctrl.setChanged();
+        return Ctrl.networkId;
     }
     public boolean isItemExcluded(Item item){
         return this.excludedTracks.contains(item);
