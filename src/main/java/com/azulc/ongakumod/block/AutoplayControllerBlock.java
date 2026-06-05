@@ -4,6 +4,7 @@ import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.container.AutoplayMenu;
 import com.azulc.ongakumod.item.TuningWrenchItem;
+import com.azulc.ongakumod.util.PlaylistHelper;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -87,7 +88,7 @@ public class AutoplayControllerBlock extends HorizontalDirectionalBlock implemen
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof AutoplayControllerBlockEntity controller) {
-                List<ItemStack> playlistDiscs = controller.buildCollapsedPlaylist().stream().map(entry -> entry.stack().copy()).toList();
+                List<ItemStack> playlistDiscs = PlaylistHelper.buildCollapsedPlaylist(controller).stream().map(entry -> entry.stack().copy()).toList();
                 serverPlayer.openMenu(new SimpleMenuProvider((id, inv, p) ->  new AutoplayMenu(id,inv,controller,controller.data,playlistDiscs),Component.literal("Autoplay Controller") ),
                     buf -> {buf.writeBlockPos(pos);ItemStack.OPTIONAL_LIST_STREAM_CODEC.encode(buf,playlistDiscs);}
                 );

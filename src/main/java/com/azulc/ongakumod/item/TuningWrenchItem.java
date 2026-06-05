@@ -5,6 +5,8 @@ import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.azulc.ongakumod.blockentity.SpeakerBlockEntity;
+import com.azulc.ongakumod.util.LinkHelper;
+import com.azulc.ongakumod.util.PlaylistHelper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
@@ -66,7 +68,7 @@ public class TuningWrenchItem extends Item {
                 // - Linking a fresh rack
                 // - Unlinking if already connected
                 // - Hijacking if linked to another controller
-                boolean nowLinked = controller.addLinkedRack(clickedPos);
+                boolean nowLinked = LinkHelper.addLinkedRack(controller,clickedPos);
                 if (nowLinked) {
                     context.getPlayer().displayClientMessage(Component.literal("Rack Linked!"), true);
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.0f, 1.2f);
@@ -75,7 +77,7 @@ public class TuningWrenchItem extends Item {
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 1.0f, 0.8f);
                 }
                 // Ensure the Controller updates its UI playlist for any nearby players
-                controller.broadcastPlaylistUpdate();
+                PlaylistHelper.broadcastPlaylistUpdate(controller);
                 return InteractionResult.SUCCESS;
             }
         }
@@ -100,7 +102,7 @@ public class TuningWrenchItem extends Item {
                 // - Linking a fresh rack
                 // - Unlinking if already connected
                 // - Hijacking if linked to another controller
-                boolean nowLinked = controller.addLinkedSpeaker(clickedPos);
+                boolean nowLinked = LinkHelper.addLinkedSpeaker(controller,clickedPos);
                 if (nowLinked) {
                     context.getPlayer().displayClientMessage(Component.literal("Speaker Linked!"), true);
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_CHIME.value(), SoundSource.BLOCKS, 1.0f, 1.2f);
@@ -109,7 +111,7 @@ public class TuningWrenchItem extends Item {
                     level.playSound(null, clickedPos, SoundEvents.NOTE_BLOCK_BASS.value(), SoundSource.BLOCKS, 1.0f, 0.8f);
                 }
                 // Ensure the Controller updates its UI playlist for any nearby players
-                controller.broadcastPlaylistUpdate();
+                PlaylistHelper.broadcastPlaylistUpdate(controller);
                 return InteractionResult.SUCCESS;
             }
         }

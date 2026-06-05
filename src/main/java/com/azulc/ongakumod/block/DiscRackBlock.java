@@ -2,6 +2,7 @@ package com.azulc.ongakumod.block;
 
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
+import com.azulc.ongakumod.util.LinkHelper;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -47,8 +48,8 @@ public class DiscRackBlock extends HorizontalDirectionalBlock implements EntityB
                 BlockPos controllerPos = rack.getControllerPos();
                 if (controllerPos != null && level.getBlockEntity(controllerPos) instanceof AutoplayControllerBlockEntity controller) {
                     controller.StopJukebox();
-                    controller.broadcastToSpeakers(false, null);
-                    controller.removeLinkedRack(pos);
+                    LinkHelper.broadcastToSpeakers(controller,false, null);
+                    LinkHelper.removeLinkedRack(controller,pos);
                 }
             }
             super.onRemove(state, level, pos, newState, isMoving);
