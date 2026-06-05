@@ -1,0 +1,10 @@
+{
+  "variants": 
+  {
+    "": {"model": "ongakumod:block/terminal_block"},
+    "facing=north": {"model": "ongakumod:block/terminal_block"},
+    "facing=east": {"model": "ongakumod:block/terminal_block","y":90 },
+    "facing=south": {"model": "ongakumod:block/terminal_block","y": 180},
+    "facing=west": {"model": "ongakumod:block/terminal_block","y": 270}
+  }
+}

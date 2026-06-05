@@ -2,10 +2,14 @@
   "itemGroup.ongakumod": "Somewhat Sophisticated Vinyl Decor",
 
   "block.ongakumod.autoplay_controller": "Sound Box",
-  "block.ongakumod.speaker": "Speaker",
+
+  "block.ongakumod.terminal_block": "Audio Relay",
+
   "item.ongakumod.tuning_wrench": "Tuning Fork",
 
   "block.ongakumod.disc_rack": "Disc Rack",
   "block.ongakumod.disc_box": "Disc Storage Box",
-  "block.ongakumod.disc_wallmount": "Disc Wall Mount"
+  "block.ongakumod.disc_wallmount": "Disc Wall Mount",
+
+  "block.ongakumod.speaker": "Speaker"
 }
