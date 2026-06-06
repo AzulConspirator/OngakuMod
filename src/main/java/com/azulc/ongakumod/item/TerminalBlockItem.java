@@ -45,6 +45,7 @@ public class TerminalBlockItem extends BlockItem {
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
+    @SuppressWarnings("static-access")
     @Override
     public InteractionResult useOn(UseOnContext context) {
         Level level = context.getLevel();
@@ -74,49 +75,51 @@ public class TerminalBlockItem extends BlockItem {
         return InteractionResult.PASS;
     }
 
-    @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
-        ItemStack stack = player.getItemInHand(hand);
-        
-        if (player.isCrouching()) {
-            return InteractionResultHolder.pass(stack);
-        }
-
-        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            UUID controllerId = getNetworkId(stack);
-            
-            if (controllerId != null) {
-                // Correctly use vanilla MenuProvider with NeoForge's patched extra data consumer
-                serverPlayer.openMenu(new MenuProvider() {
-                    @Override
-                    public Component getDisplayName() {
-                        return Component.literal("Wireless Vinyl Terminal");
-                    }
-
-                    @Override
-                    public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                        return new TerminalMenu(id, inv, controllerId);
-                    }
-                }, buf -> {
-                    // 1. Write form type indicator
-                    buf.writeBoolean(true); // true = opened from item
-                    // 2. Write targeting identity
-                    buf.writeUUID(controllerId);
-                    
-                    // 3. FIX: Fetch and write the actual snapshot data to the wire!
-                    ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(controllerId);
-                    if (currentSnapshot != null) {
-                        buf.writeBoolean(true);
-                        currentSnapshot.write(buf); // Implement this method inside your ControllerSnapshot class to save its fields
-                    } else {
-                        buf.writeBoolean(false);
-                    }
-                });
-                return InteractionResultHolder.success(stack);
-            } else {
-                player.displayClientMessage(Component.literal("Terminal is not linked to a controller!"), true);
-            }
-        }
-        return InteractionResultHolder.success(stack);
+@Override
+public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    ItemStack stack = player.getItemInHand(hand);
+    
+    if (player.isCrouching()) {
+        return InteractionResultHolder.pass(stack);
     }
+
+    if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+        UUID controllerId = getNetworkId(stack);
+        
+        if (controllerId != null) {
+            serverPlayer.openMenu(new MenuProvider() {
+                @Override
+                public Component getDisplayName() {
+                    return Component.literal("Wireless Vinyl Terminal");
+                }
+
+                @Override
+                public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                    return new TerminalMenu(id, inv, controllerId);
+                }
+            }, buf -> {
+                // 1. Identify flag: true = opened from item
+                buf.writeBoolean(true); 
+                
+                // 2. Write network link identity
+                buf.writeUUID(controllerId);
+                
+                // (BlockPos is omitted intentionally here to match the client item path)
+                
+                // 3. Stream Snapshot Data
+                ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(controllerId);
+                if (currentSnapshot != null) {
+                    buf.writeBoolean(true);
+                    currentSnapshot.write(buf);
+                } else {
+                    buf.writeBoolean(false);
+                }
+            });
+            return InteractionResultHolder.success(stack);
+        } else {
+            player.displayClientMessage(Component.literal("Terminal is not linked to a controller!"), true);
+        }
+    }
+    return InteractionResultHolder.success(stack);
+}
 }

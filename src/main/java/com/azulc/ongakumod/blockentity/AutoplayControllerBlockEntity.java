@@ -128,16 +128,23 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     //#endregion
     //#region Server Tick
     @Override
-    public void onLoad()
-    {
+    public void onLoad() {
         super.onLoad();
         getNetworkId(this);
-        if(level instanceof ServerLevel serverLevel)
-        {
-            ControllerRegistry.get(serverLevel).register(networkId,GlobalPos.of(serverLevel.dimension(),worldPosition));
+        if(level instanceof ServerLevel serverLevel) {
+            ControllerRegistry registry = ControllerRegistry.get(serverLevel);
+            ControllerSnapshot existing = registry.getSnapshot(this.networkId);
+            
+            if (existing != null) {
+                // Apply data mutations derived on the go back to the block state safely
+                this.autoplayEnabled = existing.autoplay();
+                this.currentPlaylistIndex = existing.playlistIndex(); // check later not sure if correct
+                this.setChanged();
+            }
+            
+            registry.register(networkId, GlobalPos.of(serverLevel.dimension(), worldPosition));
         }
     }
-
     @Override
     public void setRemoved()
     {

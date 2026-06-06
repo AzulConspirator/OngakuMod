@@ -23,6 +23,8 @@ import com.azulc.ongakumod.network.ClientPayloadHandler;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
 import com.azulc.ongakumod.network.ServerPayloadHandler;
 import com.azulc.ongakumod.network.SyncPlaylistPayload;
+import com.azulc.ongakumod.network.TerminalActionPayload;
+import com.azulc.ongakumod.network.TerminalAudioPayload;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.BlockPos;
@@ -77,10 +79,8 @@ public class OngakuMod
             return new AutoplayMenu(windowId, inv, pos, discs);
         }));
     public static final DeferredHolder<MenuType<?>, MenuType<TerminalMenu>> TERMINAL_MENU = 
-    MENUS.register("terminal", 
-        () -> IMenuTypeExtension.create((windowId, inv, data) -> {
-            return new TerminalMenu(windowId, inv, data);
-        }));
+    MENUS.register("terminal_menu",
+    () -> IMenuTypeExtension.create((windowId, inv, data) -> new TerminalMenu(windowId, inv, data)));
     // Disc Rack
     public static final DeferredBlock<DiscRackBlock> DISC_RACK                                                                      = BLOCKS.register("disc_rack", () -> new DiscRackBlock(BlockBehaviour.Properties.of().mapColor(MapColor.WOOD).strength(2.0f).noOcclusion()));
     public static final DeferredItem<BlockItem> DISC_RACK_ITEM                                                                      = ITEMS.registerSimpleBlockItem("disc_rack", DISC_RACK);
@@ -147,10 +147,20 @@ public class OngakuMod
             SyncPlaylistPayload.STREAM_CODEC,
             ClientPayloadHandler::handleSyncPlaylist
         );
+        registrar.playToClient(
+        TerminalAudioPayload.TYPE,
+        TerminalAudioPayload.STREAM_CODEC,
+        ClientPayloadHandler::handleTerminalAudio
+        );
         registrar.playToServer(
             ManagePlaylistPayload.TYPE,
             ManagePlaylistPayload.STREAM_CODEC,
             ServerPayloadHandler::handlePlaylistAction
+        );
+        registrar.playToServer(
+            TerminalActionPayload.TYPE,
+            TerminalActionPayload.STREAM_CODEC,
+            ServerPayloadHandler::handleTerminalAction
         );
     }
 }

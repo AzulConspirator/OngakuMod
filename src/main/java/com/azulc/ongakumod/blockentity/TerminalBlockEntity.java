@@ -56,41 +56,46 @@ public class TerminalBlockEntity extends BlockEntity
         }
     }
 
-    public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
-        if(level.isClientSide) return InteractionResult.SUCCESS;
+public InteractionResult use(BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hit) {
+    if (level.isClientSide) return InteractionResult.SUCCESS;
 
-        if(player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
-            if (this.networkId == null) {
-                player.displayClientMessage(net.minecraft.network.chat.Component.literal("Terminal unlinked!"), true);
-                return InteractionResult.FAIL;
+    if (player instanceof net.minecraft.server.level.ServerPlayer serverPlayer) {
+        if (this.networkId == null) {
+            player.displayClientMessage(Component.literal("Terminal unlinked!"), true);
+            return InteractionResult.FAIL;
+        }
+
+        serverPlayer.openMenu(new MenuProvider() {
+            @Override
+            public Component getDisplayName() {
+                return Component.literal("Wireless Vinyl Terminal");
             }
 
-            serverPlayer.openMenu(new MenuProvider() {
-                @Override
-                public Component getDisplayName() {
-                    return Component.literal("Wireless Vinyl Terminal");
-                }
-
-                @Override
-                public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                    return new TerminalMenu(id, inv, networkId);
-                }
-            }, buf -> {
-                // 1. Write form type indicator
-                buf.writeBoolean(true); // true = opened from item
-                // 2. Write targeting identity
-                buf.writeUUID(networkId);
-                
-                // 3. FIX: Fetch and write the actual snapshot data to the wire!
-                ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(networkId);
-                if (currentSnapshot != null) {
-                    buf.writeBoolean(true);
-                    currentSnapshot.write(buf); // Implement this method inside your ControllerSnapshot class to save its fields
-                } else {
-                    buf.writeBoolean(false);
-                }
-            });
-                    }
-        return InteractionResult.CONSUME;
+            @Override
+            public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                // Return the block-entity constructor variant to preserve server tracking
+                return new TerminalMenu(id, inv, TerminalBlockEntity.this);
+            }
+        }, buf -> {
+            // 1. Correct the identity flag: false = opened from Block
+            buf.writeBoolean(false); 
+            
+            // 2. Write network link identity
+            buf.writeUUID(this.networkId);
+            
+            // 3. Supply the missing BlockPos required by the client decoder
+            buf.writeBlockPos(this.worldPosition);
+            
+            // 4. Stream Snapshot Data
+            ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(this.networkId);
+            if (currentSnapshot != null) {
+                buf.writeBoolean(true);
+                currentSnapshot.write(buf);
+            } else {
+                buf.writeBoolean(false);
+            }
+        });
     }
+    return InteractionResult.CONSUME;
+}
 }

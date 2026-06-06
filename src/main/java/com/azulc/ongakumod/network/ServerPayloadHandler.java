@@ -1,5 +1,6 @@
 package com.azulc.ongakumod.network;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
@@ -7,11 +8,13 @@ import com.azulc.ongakumod.network.ManagePlaylistPayload.Action;
 import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.PlaylistHelper;
+import com.azulc.ongakumod.util.TerminalControlHandler;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.player.Player;
@@ -45,41 +48,13 @@ public class ServerPayloadHandler {
             }
         });
     }
-    public static void handleTerminalAction(ManagePlaylistPayload payload, IPayloadContext context) {
+    public static void handleTerminalAction(TerminalActionPayload payload, IPayloadContext context) 
+    {
         context.enqueueWork(() -> {
-            Player player = context.player();
-            if (!(player.level() instanceof ServerLevel serverLevel)) return;
-            BlockPos pos = payload.pos().orElseThrow(() -> new IllegalArgumentException("PLAY requires a slot index"));
-            if (serverLevel.isLoaded(pos)) {
-                BlockEntity be = serverLevel.getBlockEntity(pos); 
-                if (be instanceof AutoplayControllerBlockEntity controller) { 
-                    Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(payload.itemRegistryName()));
-                    switch (payload.action()) {
-                        case TOGGLE_AUTOPLAY -> controller.toggleAutoplay();
-                        case EXCLUDE -> controller.toggleExclusion(item);
-                        case MOVE_UP -> controller.moveInQueue(item, -1);
-                        case MOVE_DOWN -> controller.moveInQueue(item, 1);
-                        case SKIP -> controller.playNextInQueue();
-                        case STOP -> controller.StopJukebox();
-                        case PLAY -> {    
-                            int slot = payload.slotIndex().orElseThrow(() -> new IllegalArgumentException("PLAY requires a slot index"));
-                            controller.tryPlayDisc(slot);
-                        }
-                    }
-                    return; // Operations completed successfully on the live block, exit early.
-                }
-            }
-            ControllerRegistry registry = ControllerRegistry.get(serverLevel);
-            UUID netId = payload.networkId().orElseThrow(() -> new IllegalArgumentException("PLAY requires a slot index"));
-            ControllerSnapshot snapshotOpt = registry.getSnapshot(netId); // Fixed method reference
-            
-            if (snapshotOpt !=null) {
-                ControllerSnapshot snapshot = snapshotOpt;
-                if(payload.action() == Action.PLAY) {
-                     // Local client audio fallback emission point
-                     serverLevel.playSound(null, player.blockPosition(), SoundEvents.UI_BUTTON_CLICK.value(), SoundSource.RECORDS, 1.0f, 1.0f);
-                }
-            }
+            if (!(context.player() instanceof ServerPlayer player)) return;
+            ServerLevel level = player.serverLevel();
+            TerminalControlHandler.processTerminalCommand(level,payload.controllerUuid(),payload.targetControllerPos(), payload.actionId(),payload.playlistIndex(),player,payload.isBlockMode(),payload.terminalBlockPos()
+            );
         });
     }
 }
