@@ -7,7 +7,6 @@ import com.azulc.ongakumod.client.screen.DiscRackScreen;
 import com.azulc.ongakumod.client.screen.TerminalScreen;
 import com.azulc.ongakumod.util.DiscColorCache;
 
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.resources.ResourceLocation;
 

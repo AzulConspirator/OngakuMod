@@ -11,9 +11,12 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.JukeboxSong;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
+import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -24,62 +27,74 @@ public class TerminalControlHandler {
     public static final int ACTION_SKIP       = 2;
     public static final int ACTION_TOGGLE_AP  = 3;
 
-    public static void processTerminalCommand(
-            ServerLevel level, 
-            UUID controllerUuid, 
-            BlockPos targetPos, 
-            int actionId, 
-            int playlistIndex,
-            ServerPlayer player,
-            boolean isBlockMode,
-            Optional<BlockPos> terminalBlockPos
-    ) {
+    public static void processTerminalCommand(ServerLevel level, UUID controllerUuid,Boolean isControllerLoaded, BlockPos targetPos, int actionId, int playlistIndex,ServerPlayer player,boolean isBlockMode, Optional<BlockPos> terminalBlockPos)
+    {
         // Branch based on chunk loading state
-        if (level.isLoaded(targetPos) && level.getBlockEntity(targetPos) instanceof AutoplayControllerBlockEntity controller) {
-            executeOnlineAction(controller, actionId, playlistIndex);
+        // 1. Attempt to fetch the BlockEntity ONLY if the chunk is loaded.
+        // If unloaded, this safely evaluates to null without forcing a chunk load.
+        BlockEntity be = isControllerLoaded ? level.getBlockEntity(targetPos) : null;
+        // 2. Truth over agreement: Is the physical controller actually accessible right now?
+        if (be instanceof AutoplayControllerBlockEntity controller) {
+            // ONLINE MODE: The chunk is loaded and the controller exists.
+            executeOnlineAction(controller, actionId, playlistIndex,player,isBlockMode,terminalBlockPos);
         } else {
+            // OFFLINE MODE: Catch-all for unloaded chunks, destroyed blocks, or bad BlockPos fallbacks.
             executeOfflineAction(level, controllerUuid, actionId, player, isBlockMode, terminalBlockPos);
         }
     }
 
-    private static void executeOnlineAction(AutoplayControllerBlockEntity controller, int actionId, int playlistIndex) {
+    private static void executeOnlineAction(AutoplayControllerBlockEntity controller, int actionId, int playlistIndex, ServerPlayer player, boolean isBlockMode, Optional<BlockPos> terminalBlockPos) {
         switch (actionId) {
-            case ACTION_PLAY_TRACK -> controller.tryPlayDisc(playlistIndex);
-            case ACTION_STOP       -> controller.StopJukebox();
-            case ACTION_SKIP       -> controller.playNextInQueue();
+            case ACTION_PLAY_TRACK -> {
+                controller.tryPlayDisc(playlistIndex);
+                // NEW: Pipe the audio back to the terminal user!
+                if (controller.currentlyPlayingEntry != null) {
+                    SoundEvent sound = getSoundFromDiscId(controller.getLevel(), BuiltInRegistries.ITEM.getKey(controller.currentlyPlayingEntry.stack().getItem()).toString());
+                    if (sound != null) {
+                        dispatchAudioPayload(player, controller.getNetworkId(controller), false, isBlockMode, terminalBlockPos, sound);
+                    }
+                }
+            }
+            case ACTION_STOP       -> {
+                controller.StopJukebox();
+                dispatchAudioPayload(player, controller.getNetworkId(controller), true, isBlockMode, terminalBlockPos, null);
+            }
+            case ACTION_SKIP       -> {
+                controller.playNextInQueue();
+                dispatchAudioPayload(player, controller.getNetworkId(controller), true, isBlockMode, terminalBlockPos, null);
+            }
             case ACTION_TOGGLE_AP  -> controller.toggleAutoplay();
             default -> throw new IllegalArgumentException("Unknown local action ID: " + actionId);
         }
     }
 
-    private static void executeOfflineAction(
-            ServerLevel level, 
-            UUID controllerUuid, 
-            int actionId, 
-            ServerPlayer player,
-            boolean isBlockMode,
-            Optional<BlockPos> terminalBlockPos
-    ) {
+    private static void executeOfflineAction(ServerLevel level, UUID controllerUuid, int actionId, ServerPlayer player,boolean isBlockMode, Optional<BlockPos> terminalBlockPos) 
+    {
         ControllerRegistry registry = ControllerRegistry.get(level);
         ControllerRegistry.ControllerSnapshot snapshot = registry.getSnapshot(controllerUuid);
-        
         if (snapshot == null) return;
-
         // Aligned strictly to your record field accessors
         UUID id = snapshot.networkId(); 
         BlockPos pos = snapshot.pos();
         String currentDisc = snapshot.currentDisc();
+        List<String> playlist = snapshot.playlist();
         int trackIndex = snapshot.playlistIndex();
         boolean apEnabled = snapshot.autoplay();
         long startTick = snapshot.songStartTick();
-        long duration = snapshot.songDurationTicks(); // Changed from int to long to match record
-
+        long duration = snapshot.songDurationTicks();
         switch (actionId) {
             case ACTION_PLAY_TRACK -> {
+                if(startTick > 0)
+                {
+                    trackIndex++;
+                }
+                trackIndex =(trackIndex + 1) % playlist.size();
+                currentDisc = playlist.get(trackIndex);
                 startTick = level.getGameTime();
-                net.minecraft.sounds.SoundEvent sound = getSoundFromDiscId(level, currentDisc);
-                if (sound != null) {
-                    dispatchAudioPayload(player, controllerUuid, false, isBlockMode, terminalBlockPos, sound);
+                SoundEvent sound = getSoundFromDiscId(level, currentDisc);
+                if(sound != null)
+                {
+                    dispatchAudioPayload(player,controllerUuid,false,isBlockMode,terminalBlockPos,sound);
                 }
             }
             case ACTION_STOP -> {
@@ -88,18 +103,16 @@ public class TerminalControlHandler {
                 dispatchAudioPayload(player, controllerUuid, true, isBlockMode, terminalBlockPos, null);
             }
             case ACTION_SKIP -> {
-                trackIndex++; 
+                //trackIndex++;
+                trackIndex =(trackIndex + 1) % playlist.size();
+                currentDisc = playlist.get(trackIndex);
                 dispatchAudioPayload(player, controllerUuid, true, isBlockMode, terminalBlockPos, null);
             }
             case ACTION_TOGGLE_AP -> {
                 apEnabled = !apEnabled;
             }
         }
-
-        // Reconstructs using your exact record parameter order
-        ControllerRegistry.ControllerSnapshot updatedSnapshot = new ControllerRegistry.ControllerSnapshot(
-                id, pos, currentDisc, trackIndex, apEnabled, startTick, duration
-        );
+        ControllerRegistry.ControllerSnapshot updatedSnapshot = new ControllerRegistry.ControllerSnapshot(id, pos, currentDisc,playlist, trackIndex, apEnabled, startTick, duration);
         registry.updateSnapshot(controllerUuid, updatedSnapshot);
     }
     private static SoundEvent getSoundFromDiscId(Level level, String discId) {
@@ -117,17 +130,15 @@ public class TerminalControlHandler {
 
     private static void dispatchAudioPayload(ServerPlayer player, UUID controllerId, boolean isStop, boolean isBlockMode, Optional<BlockPos> terminalPos, SoundEvent sound) 
     {
-        TerminalAudioPayload packet = new TerminalAudioPayload(
-                controllerId, isStop, isBlockMode, terminalPos,
-                isBlockMode ? Optional.empty() : Optional.of(player.getId()),
-                Optional.ofNullable(sound)
-        );
-
-        if (isBlockMode && terminalPos.isPresent()) {
-            // FIX: Instantiate a ChunkPos from the terminal's BlockPos to fulfill the NeoForge method signature
-            net.minecraft.world.level.ChunkPos chunkPos = new net.minecraft.world.level.ChunkPos(terminalPos.get());
+        TerminalAudioPayload packet = new TerminalAudioPayload(controllerId, isStop, isBlockMode, terminalPos,isBlockMode ? Optional.empty() : Optional.of(player.getId()),Optional.ofNullable(sound));
+        if (isBlockMode && terminalPos.isPresent()) 
+        {
+            ChunkPos chunkPos = new ChunkPos(terminalPos.get());
             PacketDistributor.sendToPlayersTrackingChunk(player.serverLevel(), chunkPos, packet);
-        } else {
+        } 
+        else 
+        {
+            PacketDistributor.sendToPlayer(player, packet); 
             PacketDistributor.sendToPlayersTrackingEntity(player, packet);
         }
     }

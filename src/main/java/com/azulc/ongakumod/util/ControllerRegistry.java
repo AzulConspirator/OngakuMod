@@ -1,16 +1,22 @@
 package com.azulc.ongakumod.util;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.HolderLookup.Provider;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
+import net.minecraft.nbt.StringTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceKey;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.level.saveddata.SavedData;
 
@@ -22,13 +28,14 @@ public class ControllerRegistry extends SavedData {
 
     // Corrected 'Pos' to camelCase 'pos' for clean Java compliance
     public record ControllerSnapshot(
-        UUID networkId,
-        BlockPos pos, 
-        @Nullable String currentDisc, // Explicitly marked nullable
-        int playlistIndex,
-        boolean autoplay,
-        long songStartTick,
-        long songDurationTicks
+    UUID networkId,
+    BlockPos pos,
+    @Nullable String currentDisc,
+    List<String> playlist,
+    int playlistIndex,
+    boolean autoplay,
+    long songStartTick,
+    long songDurationTicks
     ){
         /**
          * Writes the snapshot instance to a network byte stream.
@@ -42,7 +49,11 @@ public class ControllerRegistry extends SavedData {
             if (this.currentDisc != null) {
                 buf.writeUtf(this.currentDisc);
             }
-            
+            buf.writeInt(this.playlist.size());
+            for(String disc : this.playlist)
+            {
+                buf.writeUtf(disc);
+            }
             buf.writeInt(this.playlistIndex);
             buf.writeBoolean(this.autoplay);
             buf.writeLong(this.songStartTick);
@@ -60,15 +71,19 @@ public class ControllerRegistry extends SavedData {
             if (buf.readBoolean()) { // Read the safety indicator flag
                 currentDisc = buf.readUtf();
             }
-            
+            int playlistSize = buf.readInt();
+            List<String> playlist = new ArrayList<>();
+
+            for(int i = 0; i < playlistSize; i++)
+            {
+                playlist.add(buf.readUtf());
+            }
             int playlistIndex = buf.readInt();
             boolean autoplay = buf.readBoolean();
             long songStartTick = buf.readLong();
             long songDurationTicks = buf.readLong();
 
-            return new ControllerSnapshot(
-                networkId, pos, currentDisc, playlistIndex, autoplay, songStartTick, songDurationTicks
-            );
+            return new ControllerSnapshot(networkId,pos,currentDisc, playlist,playlistIndex,autoplay,songStartTick,songDurationTicks);
         }
     }
     
@@ -121,12 +136,20 @@ public class ControllerRegistry extends SavedData {
             snapshotTag.putLong("Pos", snapshot.pos().asLong());
             
             // Safeguard NBT persistence file saving against NullPointerExceptions
-            if (snapshot.currentDisc() != null) {
+            if (snapshot.currentDisc() != null)
+            {
                 snapshotTag.putString("CurrentDisc", snapshot.currentDisc());
-            } else {
+            } 
+            else 
+            {
                 snapshotTag.putString("CurrentDisc", "");
             }
-            
+            ListTag playlistTag = new ListTag();
+            for(String disc : snapshot.playlist())
+            {
+                playlistTag.add(StringTag.valueOf(disc));
+            }
+            snapshotTag.put("Playlist", playlistTag);
             snapshotTag.putInt("PlaylistIndex", snapshot.playlistIndex());
             snapshotTag.putBoolean("Autoplay", snapshot.autoplay());
             snapshotTag.putLong("SongStartTick", snapshot.songStartTick());
@@ -143,13 +166,7 @@ public class ControllerRegistry extends SavedData {
         for (Tag element : list) {
             CompoundTag controllerTag = (CompoundTag) element;
             UUID id = controllerTag.getUUID("Id");
-            GlobalPos pos = GlobalPos.of(
-                net.minecraft.resources.ResourceKey.create(
-                    net.minecraft.core.registries.Registries.DIMENSION,
-                    net.minecraft.resources.ResourceLocation.parse(controllerTag.getString("Dimension"))
-                ),
-                net.minecraft.core.BlockPos.of(controllerTag.getLong("Pos"))
-            );
+            GlobalPos pos = GlobalPos.of(ResourceKey.create(Registries.DIMENSION,ResourceLocation.parse(controllerTag.getString("Dimension"))),BlockPos.of(controllerTag.getLong("Pos")));
             registry.controllers.put(id, pos);
         }
         
@@ -157,16 +174,22 @@ public class ControllerRegistry extends SavedData {
         for (Tag element : snapshotList) {
             CompoundTag snapshotTag = (CompoundTag) element;
             UUID id = snapshotTag.getUUID("Id");
-            
+            List<String> playlist = new ArrayList<>();
+            ListTag playlistTag = snapshotTag.getList("Playlist", Tag.TAG_STRING);
+            for(int i = 0; i < playlistTag.size(); i++)
+            {
+                playlist.add(playlistTag.getString(i));
+            }
             ControllerSnapshot snapshot = new ControllerSnapshot(
-                id,
-                BlockPos.of(snapshotTag.getLong("Pos")),
-                snapshotTag.getString("CurrentDisc").isEmpty() ? null : snapshotTag.getString("CurrentDisc"),
-                snapshotTag.getInt("PlaylistIndex"),
-                snapshotTag.getBoolean("Autoplay"),
-                snapshotTag.getLong("SongStartTick"),
-                snapshotTag.getLong("SongDurationTicks")
-            );
+                    id,
+                    BlockPos.of(snapshotTag.getLong("Pos")),
+                    snapshotTag.getString("CurrentDisc").isEmpty()? null: snapshotTag.getString("CurrentDisc"),
+                    playlist,
+                    snapshotTag.getInt("PlaylistIndex"),
+                    snapshotTag.getBoolean("Autoplay"),
+                    snapshotTag.getLong("SongStartTick"),
+                    snapshotTag.getLong("SongDurationTicks")
+                );
             registry.snapshots.put(id, snapshot);
         }
         return registry;

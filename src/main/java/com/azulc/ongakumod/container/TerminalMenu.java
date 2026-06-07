@@ -17,22 +17,21 @@ import java.util.Optional;
 import java.util.UUID;
 
 public class TerminalMenu extends AbstractContainerMenu {
+    @SuppressWarnings("unused")
     private final TerminalBlockEntity terminal;
     private final UUID networkId;
     private final ControllerRegistry.ControllerSnapshot snapshot; 
     // FIX: Declare clean without hardcoding null references
     private final Optional<BlockPos> terminalBlockPos;
+    private boolean isControllerLoaded = false;
 
     // Dynamic Packet/Buffer Decoder constructor (RUNS ON CLIENT ONLY)
     public TerminalMenu(int id, Inventory inv, FriendlyByteBuf buf) {
         super(OngakuMod.TERMINAL_MENU.get(), id);
-        
         // 1. Read the boolean flag
         boolean openedFromItem = buf.readBoolean();
-        
         // 2. Read UUID
         this.networkId = buf.readUUID();
-        
         // 3. Read BlockPos only if it's NOT an item
         if (!openedFromItem) {
             BlockPos pos = buf.readBlockPos();
@@ -42,13 +41,12 @@ public class TerminalMenu extends AbstractContainerMenu {
             this.terminalBlockPos = Optional.empty();
             this.terminal = null;
         }
-        
         // 4. Read Snapshot flag
         boolean hasSnapshot = buf.readBoolean();
-        
         // 5. Read snapshot
         if (hasSnapshot) {
             this.snapshot = ControllerSnapshot.read(buf);
+            this.isControllerLoaded = buf.readBoolean();
         } else {
             this.snapshot = null;
         }
@@ -61,6 +59,7 @@ public class TerminalMenu extends AbstractContainerMenu {
         this.terminalBlockPos = Optional.empty();
         if (inv.player.level() instanceof ServerLevel serverLevel) { 
             this.snapshot = ControllerRegistry.get(serverLevel).getSnapshot(controllerId); 
+            this.isControllerLoaded = this.snapshot != null && serverLevel.isLoaded(this.snapshot.pos());
         } else {
             this.snapshot = null; 
         }
@@ -74,6 +73,7 @@ public class TerminalMenu extends AbstractContainerMenu {
         this.terminalBlockPos = Optional.of(terminal.getBlockPos());
         if (inv.player.level() instanceof ServerLevel serverLevel && this.networkId != null) { 
             this.snapshot = ControllerRegistry.get(serverLevel).getSnapshot(this.networkId); 
+            this.isControllerLoaded = this.snapshot != null && serverLevel.isLoaded(this.snapshot.pos());
         } else {
             this.snapshot = null;
         }
@@ -81,6 +81,10 @@ public class TerminalMenu extends AbstractContainerMenu {
 
     public Optional<BlockPos> getTerminalBlockPos() {
         return this.terminalBlockPos;
+    }
+    
+    public Boolean IsControllerLoaded() {
+        return this.isControllerLoaded;
     }
 
     public ControllerSnapshot getSnapshot() { return snapshot; }

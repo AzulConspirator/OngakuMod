@@ -162,12 +162,17 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
                     Component.literal("Vinyl Terminal")
                 ), buf -> {
                     buf.writeBoolean(false);
+                    buf.writeUUID(terminal.getNetworkId());
                     buf.writeBlockPos(pos);
                     ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(terminal.getNetworkId());
-                    if (currentSnapshot != null) {
+                    if(currentSnapshot != null)
+                    {
                         buf.writeBoolean(true);
                         currentSnapshot.write(buf);
-                    } else {
+                        buf.writeBoolean(serverPlayer.serverLevel().isLoaded(currentSnapshot.pos()));
+                    }
+                    else
+                    {
                         buf.writeBoolean(false);
                     }
                 });

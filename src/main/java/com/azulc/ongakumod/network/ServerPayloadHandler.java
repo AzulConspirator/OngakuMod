@@ -1,12 +1,6 @@
 package com.azulc.ongakumod.network;
 
-import java.util.Optional;
-import java.util.UUID;
-
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
-import com.azulc.ongakumod.network.ManagePlaylistPayload.Action;
-import com.azulc.ongakumod.util.ControllerRegistry;
-import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.PlaylistHelper;
 import com.azulc.ongakumod.util.TerminalControlHandler;
 
@@ -15,12 +9,8 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvents;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.entity.BlockEntity;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public class ServerPayloadHandler {
@@ -53,7 +43,7 @@ public class ServerPayloadHandler {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) return;
             ServerLevel level = player.serverLevel();
-            TerminalControlHandler.processTerminalCommand(level,payload.controllerUuid(),payload.targetControllerPos(), payload.actionId(),payload.playlistIndex(),player,payload.isBlockMode(),payload.terminalBlockPos()
+            TerminalControlHandler.processTerminalCommand(level,payload.controllerUuid(),level.isLoaded(payload.targetControllerPos()),payload.targetControllerPos(), payload.actionId(),payload.playlistIndex(),player,payload.isBlockMode(),payload.terminalBlockPos()
             );
         });
     }

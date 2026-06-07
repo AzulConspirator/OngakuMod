@@ -52,23 +52,17 @@ public class TerminalBlockItem extends BlockItem {
         BlockPos clickedPos = context.getClickedPos();
         Player player = context.getPlayer();
         ItemStack stack = context.getItemInHand();
-
         if (player == null) return InteractionResult.PASS;
-
-        // If shifting, check if we clicked a controller to link it
         if (player.isShiftKeyDown()) {
             BlockEntity be = level.getBlockEntity(clickedPos);
             if (be instanceof AutoplayControllerBlockEntity autoplayBE) {
                 if (!level.isClientSide) {
-                    // Assuming your controller has a way to get its persistent network ID
-                    // Replace 'getNetworkId()' with your actual controller's unique ID getter
                     UUID controllerUUID = autoplayBE.getNetworkId(autoplayBE); 
                     setNetworkId(stack, controllerUUID);
                     player.displayClientMessage(Component.literal("Terminal linked to controller!"), true);
                 }
                 return InteractionResult.sidedSuccess(level.isClientSide);
             }
-            // If shifting but NOT clicking a controller, allow normal block placement
             return super.useOn(context);
         }
 
@@ -100,17 +94,14 @@ public InteractionResultHolder<ItemStack> use(Level level, Player player, Intera
             }, buf -> {
                 // 1. Identify flag: true = opened from item
                 buf.writeBoolean(true); 
-                
                 // 2. Write network link identity
                 buf.writeUUID(controllerId);
-                
-                // (BlockPos is omitted intentionally here to match the client item path)
-                
                 // 3. Stream Snapshot Data
                 ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(controllerId);
                 if (currentSnapshot != null) {
                     buf.writeBoolean(true);
                     currentSnapshot.write(buf);
+                    buf.writeBoolean(serverPlayer.serverLevel().isLoaded(currentSnapshot.pos()));
                 } else {
                     buf.writeBoolean(false);
                 }

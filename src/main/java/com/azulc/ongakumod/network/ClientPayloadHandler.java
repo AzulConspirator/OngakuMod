@@ -17,7 +17,6 @@ public class ClientPayloadHandler
     }
     public static void handleTerminalAudio(TerminalAudioPayload payload, IPayloadContext context) {
         context.enqueueWork(() -> {
-            // Execution context isolated safely onto the Client Render thread
             if (payload.isStopPacket()) {
                 TerminalSoundHandler.stopSound(payload.controllerId());
                 return;

@@ -9,11 +9,15 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
+import net.minecraft.world.item.Item;
+import net.minecraft.world.item.TooltipFlag;
 import net.neoforged.neoforge.network.PacketDistributor;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 
@@ -30,83 +34,44 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
     @Override
     protected void init() {
         super.init();
-
-        int startX = this.leftPos + ((this.imageWidth - 83) / 2);
+        
+        int startX = this.leftPos + ((this.imageWidth - 62) / 2);
         int startY = this.topPos + 85;
         int spacing = 21;
 
         // 1. STOP (Action ID: 1)
-        this.addRenderableWidget(new TerminalIconButton(startX, startY, 2, 
-            Component.literal("Stop"), () -> false, (b) -> {
-                var snapshot = this.menu.getSnapshot();
-                BlockPos targetPos = snapshot != null ? snapshot.pos() : BlockPos.ZERO;
-                Boolean isBlockMode = this.menu.getTerminalBlockPos() != null ? true : false;
-                Optional<BlockPos> blockPosOpt = Optional.ofNullable(this.menu.getTerminalBlockPos())
-                .flatMap(opt -> opt);
-                PacketDistributor.sendToServer(new TerminalActionPayload(
-                        this.menu.getNetworkId(),
-                        targetPos,
-                        TerminalControlHandler.ACTION_STOP,
-                        0, // Index ignored for stop actions
-                        isBlockMode,
-                        blockPosOpt
-                ));
-        }));
-
-        // 2. PLAY (Action ID: 0)
-        this.addRenderableWidget(new TerminalIconButton(startX + spacing, startY, 0, 
-            Component.literal("Play"), () -> false, (b) -> {
-                var snapshot = this.menu.getSnapshot();
-                BlockPos targetPos = snapshot != null ? snapshot.pos() : BlockPos.ZERO;
-                int currentIndex = snapshot != null ? snapshot.playlistIndex() : 0;
-                Boolean isBlockMode = this.menu.getTerminalBlockPos() != null ? true : false;
-                Optional<BlockPos> blockPosOpt = Optional.ofNullable(this.menu.getTerminalBlockPos())
-                .flatMap(opt -> opt);
-                PacketDistributor.sendToServer(new TerminalActionPayload(
-                        this.menu.getNetworkId(),
-                        targetPos,
-                        TerminalControlHandler.ACTION_PLAY_TRACK,
-                        currentIndex,
-                        isBlockMode,
-                        blockPosOpt
-                ));
-        }));
-
-        // 3. SKIP (Action ID: 2)
-        this.addRenderableWidget(new TerminalIconButton(startX + (spacing * 2), startY, 1, 
-            Component.literal("Skip"), () -> false, (b) -> {
-                var snapshot = this.menu.getSnapshot();
-                BlockPos targetPos = snapshot != null ? snapshot.pos() : BlockPos.ZERO;
-                Boolean isBlockMode = this.menu.getTerminalBlockPos() != null ? true : false;
-                Optional<BlockPos> blockPosOpt = Optional.ofNullable(this.menu.getTerminalBlockPos()).flatMap(opt -> opt);
-                PacketDistributor.sendToServer(new TerminalActionPayload(
-                        this.menu.getNetworkId(),
-                        targetPos,
-                        TerminalControlHandler.ACTION_SKIP,
-                        0, // Index ignored for context skips
-                        isBlockMode,
-                        blockPosOpt
-                ));
-        }));
+        this.addRenderableWidget(
+            new TerminalIconButton(
+                startX,
+                startY,
+                2,
+                Component.literal("Stop"),() -> false, b -> sendAction( TerminalControlHandler.ACTION_STOP,0))
+        );
+        this.addRenderableWidget(
+            new TerminalIconButton(
+                startX + spacing,
+                startY,
+                0,
+                Component.literal("Play / Skip"),() -> false, b -> sendAction(TerminalControlHandler.ACTION_PLAY_TRACK,this.menu.getSnapshot().playlistIndex()))
+        );
 
         // 4. AUTOPLAY (Action ID: 3)
-        this.addRenderableWidget(new TerminalIconButton(startX + (spacing * 3), startY, 3, 
-            Component.literal("Autoplay Loop"), 
-            () -> this.menu.getSnapshot() != null && this.menu.getSnapshot().autoplay(), 
-            (b) -> {
-                var snapshot = this.menu.getSnapshot();
-                BlockPos targetPos = snapshot != null ? snapshot.pos() : BlockPos.ZERO;
-                Boolean isBlockMode = this.menu.getTerminalBlockPos() != null ? true : false;
-                Optional<BlockPos> blockPosOpt = Optional.ofNullable(this.menu.getTerminalBlockPos()).flatMap(opt -> opt);
-                PacketDistributor.sendToServer(new TerminalActionPayload(
-                        this.menu.getNetworkId(),
-                        targetPos,
-                        TerminalControlHandler.ACTION_TOGGLE_AP,
-                        0,
-                        isBlockMode,
-                        blockPosOpt
-                ));
-        }));
+        this.addRenderableWidget(
+            new TerminalIconButton(
+                startX + (spacing * 2),
+                startY,
+                3,
+                Component.literal("Autoplay"),() -> this.menu.getSnapshot() != null&& this.menu.getSnapshot().autoplay(), b -> sendAction(TerminalControlHandler.ACTION_TOGGLE_AP,0)
+            )
+        );
+    }
+    private void sendAction(int action, int index)
+    {
+        var snapshot = this.menu.getSnapshot();
+        BlockPos targetPos = snapshot != null ? snapshot.pos() : BlockPos.ZERO;
+        boolean isBlockMode = this.menu.getTerminalBlockPos() != null;
+        Optional<BlockPos> blockPosOpt = Optional.ofNullable(this.menu.getTerminalBlockPos()).flatMap(opt -> opt);
+        PacketDistributor.sendToServer(new TerminalActionPayload(this.menu.getNetworkId(),targetPos,this.menu.IsControllerLoaded(),action, index, isBlockMode, blockPosOpt));
     }
 
     @Override
@@ -133,14 +98,33 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         int textY = this.topPos + 32;
         int lineSpacing = 12;
 
-        // FIX: Handle Nullable currentDisc variants gracefully instead of drawing "null"
-        String discName = (snapshot.currentDisc() == null || snapshot.currentDisc().isEmpty()) ? "None" : snapshot.currentDisc();
-        graphics.drawString(this.font, "Disc: " + discName, this.leftPos + 15, textY, 0xFFE0E0E0, false);
-        graphics.drawString(this.font, "Track Number: #" + (snapshot.playlistIndex() + 1), this.leftPos + 15, textY + lineSpacing, 0xFFE0E0E0, false);
-        
-        String autoplayText = snapshot.autoplay() ? "Loop Engine: Connected" : "Loop Engine: Idle";
-        int autoplayColor = snapshot.autoplay() ? 0xFF55FF55 : 0xFFFF5555;
-        graphics.drawString(this.font, autoplayText, this.leftPos + 15, textY + (lineSpacing * 2), autoplayColor, false);
+        if(snapshot.currentDisc() != null && !snapshot.currentDisc().isEmpty())
+        {
+            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(snapshot.currentDisc()));
+            List<Component> discName = item.getDefaultInstance().getTooltipLines(Item.TooltipContext.of(this.minecraft.level),this.minecraft.player,TooltipFlag.Default.NORMAL);
+            if (discName.size() >= 2) 
+            {
+                String fullText = discName.get(1).getString();
+                String[] parts = fullText.split(" - ");
+                if (parts.length == 2) 
+                {
+                    graphics.drawString(this.font, parts[1], this.leftPos + 15, textY, 0xFFFFFFFF);
+                    graphics.drawString(this.font, parts[0], this.leftPos + 15, textY+ lineSpacing, 0xFFAAAAAA);
+                }
+                else 
+                {
+                    graphics.drawString(this.font, fullText, this.leftPos + 15, textY, 0xFFFFFFFF);
+                }
+            }
+        }
+        else
+        {
+            graphics.drawString(this.font, "Disc: None", this.leftPos + 15, textY, 0xFFE0E0E0, false);
+        }
+        boolean isPhysicallyLinked = this.menu.IsControllerLoaded(); 
+        String mode = isPhysicallyLinked ? "Direct Connection" : "Remote Snapshot Mode";
+        int modeColor = isPhysicallyLinked ? 0xFF55FF55 : 0xFFFFAA55;
+        graphics.drawString(this.font,mode,this.leftPos + 15,textY + (lineSpacing * 2),modeColor,false);
     }
 
     @Override

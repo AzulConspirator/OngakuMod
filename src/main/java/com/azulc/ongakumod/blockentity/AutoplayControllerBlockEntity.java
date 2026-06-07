@@ -181,21 +181,27 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
     }
 
-    public static ControllerSnapshot createSnapshot(AutoplayControllerBlockEntity Ctrl)
+    public static ControllerSnapshot createSnapshot(AutoplayControllerBlockEntity ctrl)
     {
         String discId = "";
-        if(Ctrl.currentlyPlayingEntry != null)
+        if(ctrl.currentlyPlayingEntry != null)
         {
-            discId =BuiltInRegistries.ITEM.getKey(Ctrl.currentlyPlayingEntry.stack().getItem()).toString();
+            discId = BuiltInRegistries.ITEM.getKey(ctrl.currentlyPlayingEntry.stack().getItem()).toString();
+        }
+        List<String> playlistIds = new ArrayList<>();
+        for(PlaylistEntry entry : PlaylistHelper.buildPlaylist(ctrl))
+        {
+            playlistIds.add(BuiltInRegistries.ITEM.getKey(entry.stack().getItem()).toString());
         }
         return new ControllerSnapshot(
-            Ctrl.networkId,
-            Ctrl.getBlockPos(),
+            ctrl.networkId,
+            ctrl.getBlockPos(),
             discId,
-            Ctrl.currentPlaylistIndex,
-            Ctrl.autoplayEnabled,
-            Ctrl.songStartTick,
-            Ctrl.songDurationTicks
+            playlistIds,
+            ctrl.currentPlaylistIndex,
+            ctrl.autoplayEnabled,
+            ctrl.songStartTick,
+            ctrl.songDurationTicks
         );
     }
 
