@@ -38,3 +38,6 @@ run/
 **/src/generated/**/.cache/
 repo/
 !**/src/**/repo/
+CodeAggregator.java
+combined_source.txt
+.gitignore
