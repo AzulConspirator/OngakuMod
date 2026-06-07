@@ -1,6 +1,11 @@
 package com.azulc.ongakumod.container;
 
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.data.tags.ItemTagsProvider;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -9,6 +14,7 @@ import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 
+import java.util.Optional;
 import java.util.function.Predicate;
 
 import com.azulc.ongakumod.OngakuMod;
@@ -16,7 +22,8 @@ import com.azulc.ongakumod.OngakuMod;
 public class DiscContainer extends AbstractContainerMenu {
     public static final int SIZE = 8;
     public static final Predicate<ItemStack> FILTER = stack -> {
-        return stack.has(DataComponents.JUKEBOX_PLAYABLE);
+
+        return stack.has(DataComponents.JUKEBOX_PLAYABLE) || hasComponentByString(stack,"etched:music");
     };
 
     protected final Container inventory;
@@ -88,7 +95,19 @@ public class DiscContainer extends AbstractContainerMenu {
 
         return stack;
     }
+    
+    public static boolean hasComponentByString(ItemStack stack, String componentId) {
+        // 1. Convert string (e.g., "minecraft:custom_name") into a ResourceLocation
+        ResourceLocation location = ResourceLocation.parse(componentId);
+        
+        // 2. Look up the DataComponentType in the built-in registry
+        Optional<DataComponentType<?>> componentType = BuiltInRegistries.DATA_COMPONENT_TYPE.getOptional(location);
+        
+        // 3. If found, use stack.has() to see if the item stack contains it
+        return componentType.map(stack::has).orElse(false);
+    }
 }
+
 
 class ConditionalSlot extends Slot {
     private Predicate<ItemStack> predicate;
