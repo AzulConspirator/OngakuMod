@@ -6,7 +6,6 @@ import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 
-import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponents;
@@ -29,10 +28,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
-import java.rmi.registry.Registry;
 import java.util.UUID;
-
-import org.openjdk.nashorn.internal.objects.Global;
 
 public class TerminalBlockItem extends BlockItem {
 

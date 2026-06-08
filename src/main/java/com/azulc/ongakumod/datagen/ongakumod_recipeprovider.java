@@ -53,6 +53,15 @@ public class ongakumod_recipeprovider extends RecipeProvider implements IConditi
         .unlockedBy(getName(), has(Items.STICK))
         .save(recipeOutput, OngakuMod.SPEAKER.getId()); 
 
+        ShapedRecipeBuilder.shaped(RecipeCategory.DECORATIONS, OngakuMod.TERMINAL_BLOCK.asItem())
+        .pattern("SAS")
+        .pattern("DAD")
+        .define('S', Items.IRON_NUGGET)
+        .define('A', Items.NOTE_BLOCK)
+        .define('D', Items.ECHO_SHARD)
+        .unlockedBy(getName(), has(Items.STICK))
+        .save(recipeOutput, OngakuMod.TERMINAL_BLOCK.getId()); 
+
         SingleItemRecipeBuilder.stonecutting(Ingredient.of(ItemTags.LOGS),RecipeCategory.DECORATIONS,   // Recipe Category
         OngakuMod.DISC_RACK.asItem(),1)
         .unlockedBy(getName(), has(ItemTags.PLANKS))
