@@ -11,6 +11,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -44,13 +45,13 @@ public class TerminalSoundHandler
     }
 
     // --- MODE 1: BLOCK MODE (Static Position Attenuation) ---
-    public static void playBlockModeSound(UUID controllerId, SoundEvent soundEvent, BlockPos pos) {
+    public static void playBlockModeSound(UUID controllerId, SoundEvent soundEvent,ItemStack Disc, BlockPos pos) {
         // SimpleSoundInstance.forJukeboxSong scales volume and creates standard jukebox attenuation dropoffs
         playSound(controllerId, SimpleSoundInstance.forJukeboxSong(soundEvent, Vec3.atCenterOf(pos)));
     }
 
     // --- MODE 2: ITEM MODE / MP3 MODE (Entity-Bound Attenuation) ---
-    public static void playItemModeSound(UUID controllerId, SoundEvent soundEvent, int entityId) {
+    public static void playItemModeSound(UUID controllerId, SoundEvent soundEvent,ItemStack Disc, int entityId) {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
 

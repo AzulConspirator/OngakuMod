@@ -3,6 +3,7 @@ package com.azulc.ongakumod.blockentity;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.Holder;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
@@ -12,7 +13,6 @@ import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
-
 import net.minecraft.resources.ResourceLocation;
 
 import net.minecraft.server.level.ServerLevel;
@@ -20,6 +20,7 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.inventory.ContainerData;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.JukeboxSong;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.block.JukeboxBlock;
@@ -31,6 +32,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 
@@ -72,7 +74,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             {
                 case 0 -> linkedRackPositions.isEmpty() ? 0 : 1;
                 case 1 -> GetCurrentPlayingIndex();
-                case 2 -> cachedStatus;
+                case 2 -> JukeboxHelper.CheckJukeStatus(AutoplayControllerBlockEntity.this.level,JukeboxHelper.findJukebox(AutoplayControllerBlockEntity.this));
                 case 3 -> autoplayEnabled ? 1 : 0;
                 case 4 -> (level != null && songStartTick != -1 && cachedStatus == 1) ? (int)(level.getGameTime() - songStartTick) : 0;
                 case 5 -> songDurationTicks;
@@ -134,26 +136,15 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         if(level instanceof ServerLevel serverLevel) {
             ControllerRegistry registry = ControllerRegistry.get(serverLevel);
             ControllerSnapshot existing = registry.getSnapshot(this.networkId);
-            
             if (existing != null) {
-                // Apply data mutations derived on the go back to the block state safely
                 this.autoplayEnabled = existing.autoplay();
-                this.currentPlaylistIndex = existing.playlistIndex(); // check later not sure if correct
+                this.currentPlaylistIndex = existing.playlistIndex();
                 this.setChanged();
             }
-            
             registry.register(networkId, GlobalPos.of(serverLevel.dimension(), worldPosition));
         }
     }
-    @Override
-    public void setRemoved()
-    {
-        super.setRemoved();
-        if(level instanceof ServerLevel serverLevel)
-        {
-            ControllerRegistry.get(serverLevel).unregister(networkId);
-        }
-    }
+
     public static void serverTick(Level level, BlockPos pos, BlockState state, AutoplayControllerBlockEntity entity) 
     {
         entity.tickCounter++;
@@ -183,15 +174,15 @@ public class AutoplayControllerBlockEntity extends BlockEntity
 
     public static ControllerSnapshot createSnapshot(AutoplayControllerBlockEntity ctrl)
     {
-        String discId = "";
+        ItemStack discId = null;
         if(ctrl.currentlyPlayingEntry != null)
         {
-            discId = BuiltInRegistries.ITEM.getKey(ctrl.currentlyPlayingEntry.stack().getItem()).toString();
+            discId = ctrl.currentlyPlayingEntry.stack();
         }
-        List<String> playlistIds = new ArrayList<>();
+        List<ItemStack> playlistIds = new ArrayList<>();
         for(PlaylistEntry entry : PlaylistHelper.buildPlaylist(ctrl))
         {
-            playlistIds.add(BuiltInRegistries.ITEM.getKey(entry.stack().getItem()).toString());
+            playlistIds.add(entry.stack());
         }
         return new ControllerSnapshot(
             ctrl.networkId,
@@ -222,21 +213,14 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
 
         int newStatus = -1;
-        BlockPos jukeboxPos = JukeboxHelper.findJukebox(this);
-        if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
-                if (jukebox.getBlockState().getValue(JukeboxBlock.HAS_RECORD)) {
-                    newStatus = jukebox.getSongPlayer().isPlaying() ? 1 : 0;
-                } else {
-                    newStatus = 0;
-                }
-            }
+        newStatus = JukeboxHelper.CheckJukeStatus(level,JukeboxHelper.findJukebox(this));
         if (newStatus != 1)
         {
             LinkHelper.broadcastToSpeakers(this,false, null);
         }
         // Only sync if the status actually changed to save bandwidth
         if (this.cachedStatus != newStatus) {
-            this.cachedStatus = newStatus;
+            this.data.set(2,newStatus);
             this.setChanged();
             if (level instanceof ServerLevel) {
                 level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
@@ -333,6 +317,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         if (Ctrl.networkId == null) 
         {
             Ctrl.networkId = UUID.randomUUID();
+            GlobalPos pos = GlobalPos.of(Ctrl.getLevel().dimension(),Ctrl.getBlockPos());
+            ControllerRegistry.get((ServerLevel)Ctrl.getLevel()).register(Ctrl.networkId, pos);
         }
         Ctrl.setChanged();
         return Ctrl.networkId;
@@ -424,7 +410,15 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
         ItemStack discCopy = refreshedDisc.split(1);
         jukebox.setTheItem(discCopy);
-        this.songDurationTicks = jukebox.getSongPlayer().getSong().lengthInTicks();
+        Optional<Holder<JukeboxSong>> songHolderOpt = JukeboxSong.fromStack(level.registryAccess(), discCopy);
+
+        if (songHolderOpt.isPresent()) {
+            Holder<JukeboxSong> songHolder = songHolderOpt.get();
+            this.songDurationTicks = songHolder.value().lengthInTicks();
+            jukebox.getSongPlayer().play(level, songHolder);
+        } else {
+            this.songDurationTicks = 0;
+        }
         this.songStartTick = level.getGameTime();
 
         currentPlaylistIndex = playlistIndex;

@@ -1,6 +1,8 @@
 package com.azulc.ongakumod.network;
 
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
+import com.azulc.ongakumod.container.TerminalMenu;
+import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.PlaylistHelper;
 import com.azulc.ongakumod.util.TerminalControlHandler;
 
@@ -43,8 +45,13 @@ public class ServerPayloadHandler {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) return;
             ServerLevel level = player.serverLevel();
-            TerminalControlHandler.processTerminalCommand(level,payload.controllerUuid(),level.isLoaded(payload.targetControllerPos()),payload.targetControllerPos(), payload.actionId(),payload.playlistIndex(),player,payload.isBlockMode(),payload.terminalBlockPos()
-            );
+            ControllerSnapshot freshSnapshot = TerminalControlHandler.processTerminalCommand(level,payload.controllerUuid(),level.isLoaded(payload.targetControllerPos()),payload.targetControllerPos(), payload.actionId(),payload.playlistIndex(),player,payload.isBlockMode(),payload.terminalBlockPos());
+            boolean isLoaded = freshSnapshot != null && level.isLoaded(freshSnapshot.pos());
+            if (freshSnapshot != null && player.containerMenu instanceof TerminalMenu terminalMenu) {
+                if (terminalMenu.getNetworkId().equals(payload.controllerUuid())) {
+                    context.reply(new TerminalUpdatePayload(freshSnapshot, isLoaded));
+                }
+            }
         });
     }
 }

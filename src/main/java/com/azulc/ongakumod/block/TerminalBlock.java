@@ -7,16 +7,17 @@ import com.azulc.ongakumod.blockentity.TerminalBlockEntity;
 import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
+import com.azulc.ongakumod.util.LinkHelper;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.InteractionHand;
-import net.minecraft.world.ItemInteractionResult;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -143,41 +144,51 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
             }
         }
     }
-
-    // Ensure player right-clicking the block also opens the menu properly:
+    
     @Override
-    protected ItemInteractionResult useItemOn(ItemStack stack, BlockState state, Level level, BlockPos pos, Player player, InteractionHand hand, BlockHitResult hitResult) {
-        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
+    protected InteractionResult useWithoutItem(BlockState state, Level level, BlockPos pos, Player player, BlockHitResult hitResult)
+    {
+        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) 
+        {
             BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof TerminalBlockEntity terminal) {
-                
-                // Defensively fail early if the block entity has no linked network ID yet
-                if (terminal.getNetworkId() == null) {
-                    player.displayClientMessage(Component.literal("Terminal unlinked!"), true);
-                    return ItemInteractionResult.FAIL;
-                }
-
-                serverPlayer.openMenu(new SimpleMenuProvider(
-                    (id, inv, p) -> new TerminalMenu(id, inv, terminal), 
+            if (be instanceof TerminalBlockEntity terminal) 
+            {
+                UUID controllerId = terminal.getNetworkId();
+                GlobalPos GlobePos = ControllerRegistry.get((ServerLevel)level).get(controllerId);
+                if (controllerId != null && pos != null) 
+                {
+                    if(!LinkHelper.ControllerExist(controllerId, level, GlobePos) && level.isLoaded(GlobePos.pos()))
+                    {
+                        player.displayClientMessage(Component.literal("Controller Missing, Terminal unlinked!"), true);
+                        ControllerRegistry.get((ServerLevel)level).unregister(controllerId);
+                        terminal.ClearNetworkId();
+                        return  InteractionResult.FAIL;
+                    }
+                    serverPlayer.openMenu(new SimpleMenuProvider(
+                    (id, inv, p) -> new TerminalMenu(id, inv, terminal,true), 
                     Component.literal("Vinyl Terminal")
-                ), buf -> {
-                    buf.writeBoolean(false);
-                    buf.writeUUID(terminal.getNetworkId());
-                    buf.writeBlockPos(pos);
-                    ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(terminal.getNetworkId());
-                    if(currentSnapshot != null)
-                    {
-                        buf.writeBoolean(true);
-                        currentSnapshot.write(buf);
-                        buf.writeBoolean(serverPlayer.serverLevel().isLoaded(currentSnapshot.pos()));
-                    }
-                    else
-                    {
+                    ), buf -> {
                         buf.writeBoolean(false);
-                    }
-                });
+                        buf.writeUUID(terminal.getNetworkId());
+                        buf.writeBlockPos(pos);
+                        ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(terminal.getNetworkId());
+                        if(currentSnapshot != null)
+                        {
+                            buf.writeBoolean(true);
+                            currentSnapshot.write(buf);
+                            buf.writeBoolean(serverPlayer.serverLevel().isLoaded(currentSnapshot.pos()));
+                        }
+                        else
+                        {
+                            buf.writeBoolean(false);
+                        }
+                    });
+                    return InteractionResult.SUCCESS;
+                }
+                player.displayClientMessage(Component.literal("Terminal unlinked!"), true);
+                return InteractionResult.FAIL;
             }
         }
-        return ItemInteractionResult.SUCCESS;
+        return InteractionResult.SUCCESS;
     }
 }

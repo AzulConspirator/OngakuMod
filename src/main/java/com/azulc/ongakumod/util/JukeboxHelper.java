@@ -41,6 +41,23 @@ public class JukeboxHelper {
             }
         }
     }
+    public static int CheckJukeStatus(Level level,BlockPos jukeboxPos)
+    {
+        if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
+            if (jukebox.getBlockState().getValue(JukeboxBlock.HAS_RECORD)) 
+            {
+                return jukebox.getSongPlayer().isPlaying() ? 1 : 0;
+            } 
+            else 
+            {
+                return 0;
+            }
+        }
+        else
+        {
+            return -1;
+        }
+    }
     public static void clearJukebox(AutoplayControllerBlockEntity Controller,JukeboxBlockEntity jukebox, BlockPos pos) 
     {
         Level level = Controller.getLevel();

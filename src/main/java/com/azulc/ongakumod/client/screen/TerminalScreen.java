@@ -4,16 +4,17 @@ import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.network.TerminalActionPayload;
 import com.azulc.ongakumod.util.TerminalControlHandler;
+import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
+
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraft.world.item.Item;
+import net.minecraft.world.item.Item.TooltipContext;
 import net.minecraft.world.item.TooltipFlag;
 import net.neoforged.neoforge.network.PacketDistributor;
 
@@ -21,58 +22,51 @@ import java.util.List;
 import java.util.Optional;
 import java.util.function.BooleanSupplier;
 
-public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
-    
+public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
+{    
     public static final ResourceLocation BUTTON_ICONS = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/gui/controller.png");
-    
-    public TerminalScreen(TerminalMenu menu, Inventory inv, Component title) {
+    ControllerSnapshot snapshot;
+
+    public TerminalScreen(TerminalMenu menu, Inventory inv, Component title) 
+    {
         super(menu, inv, title);
         this.imageWidth = 176;
         this.imageHeight = 120; 
     }
 
     @Override
-    protected void init() {
+    protected void containerTick() {
+        super.containerTick();
+    }
+
+    @Override
+    protected void init()
+    {
         super.init();
-        
         int startX = this.leftPos + ((this.imageWidth - 62) / 2);
         int startY = this.topPos + 85;
         int spacing = 21;
-
-        // 1. STOP (Action ID: 1)
         this.addRenderableWidget(
-            new TerminalIconButton(
-                startX,
-                startY,
-                2,
-                Component.literal("Stop"),() -> false, b -> sendAction( TerminalControlHandler.ACTION_STOP,0))
+            new TerminalIconButton(startX,startY,2,
+                Component.translatable("general.ongakumod.stop"),() -> false, b -> sendAction( TerminalControlHandler.ACTION_STOP,0,this.menu.IsblockMode()))
         );
         this.addRenderableWidget(
-            new TerminalIconButton(
-                startX + spacing,
-                startY,
-                0,
-                Component.literal("Play / Skip"),() -> false, b -> sendAction(TerminalControlHandler.ACTION_PLAY_TRACK,this.menu.getSnapshot().playlistIndex()))
+            new TerminalIconButton(startX + spacing,startY,0,
+                Component.literal(Component.translatable("general.ongakumod.play").getString()+" / "+Component.translatable("general.ongakumod.skip").getString()),() -> false, b -> sendAction(TerminalControlHandler.ACTION_PLAY_TRACK,this.menu.getSnapshot().playlistIndex(),this.menu.IsblockMode()))
         );
-
-        // 4. AUTOPLAY (Action ID: 3)
         this.addRenderableWidget(
-            new TerminalIconButton(
-                startX + (spacing * 2),
-                startY,
-                3,
-                Component.literal("Autoplay"),() -> this.menu.getSnapshot() != null&& this.menu.getSnapshot().autoplay(), b -> sendAction(TerminalControlHandler.ACTION_TOGGLE_AP,0)
+            new TerminalIconButton(startX + (spacing * 2),startY,3,
+                Component.translatable("general.ongakumod.autoplay"),() -> this.menu.getSnapshot() != null&& this.menu.getSnapshot().autoplay(), b -> sendAction(TerminalControlHandler.ACTION_TOGGLE_AP,0,this.menu.IsblockMode())
             )
         );
     }
-    private void sendAction(int action, int index)
+    private void sendAction(int action, int index, boolean isBlockMode)
     {
-        var snapshot = this.menu.getSnapshot();
-        BlockPos targetPos = snapshot != null ? snapshot.pos() : BlockPos.ZERO;
-        boolean isBlockMode = this.menu.getTerminalBlockPos() != null;
+        this.snapshot = this.menu.getSnapshot();
+        BlockPos targetPos = this.snapshot != null ? this.snapshot.pos() : BlockPos.ZERO;
         Optional<BlockPos> blockPosOpt = Optional.ofNullable(this.menu.getTerminalBlockPos()).flatMap(opt -> opt);
         PacketDistributor.sendToServer(new TerminalActionPayload(this.menu.getNetworkId(),targetPos,this.menu.IsControllerLoaded(),action, index, isBlockMode, blockPosOpt));
-    }
+    }   
 
     @Override
     protected void renderLabels(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -86,22 +80,20 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         graphics.fill(this.leftPos, this.topPos, this.leftPos + this.imageWidth, this.topPos + 1, 0x66FFFFFF);
         graphics.fill(this.leftPos, this.topPos + this.imageHeight - 1, this.leftPos + this.imageWidth, this.topPos + this.imageHeight, 0x66FFFFFF);
 
-        var snapshot = this.menu.getSnapshot();
-        if (snapshot == null) {
-            graphics.drawCenteredString(this.font, "Connecting to Controller...", this.leftPos + (this.imageWidth / 2), this.topPos + (this.imageHeight / 2) - 4, 0xFFAAAAAA);
+        this.snapshot = this.menu.getSnapshot();
+        if (this.snapshot == null) {
+            graphics.drawCenteredString(this.font,(Component.translatable("terminal.ongakumod.pendingconnection").getString()), this.leftPos + (this.imageWidth / 2), this.topPos + (this.imageHeight / 2) - 4, 0xFFAAAAAA);
             return;
         }
 
         graphics.fill(this.leftPos + 10, this.topPos + 10, this.leftPos + 16, this.topPos + 16, 0xFF55FF55);
-        graphics.drawString(this.font, "Remote Vinyl Station", this.leftPos + 22, this.topPos + 9, 0xFFFFFFFF, false);
 
         int textY = this.topPos + 32;
         int lineSpacing = 12;
 
-        if(snapshot.currentDisc() != null && !snapshot.currentDisc().isEmpty())
+        if(this.snapshot.currentDisc() != null && !this.snapshot.currentDisc().isEmpty())
         {
-            Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(snapshot.currentDisc()));
-            List<Component> discName = item.getDefaultInstance().getTooltipLines(Item.TooltipContext.of(this.minecraft.level),this.minecraft.player,TooltipFlag.Default.NORMAL);
+            List<Component> discName = this.snapshot.currentDisc().getTooltipLines(TooltipContext.of(this.minecraft.level),this.minecraft.player,TooltipFlag.Default.NORMAL);
             if (discName.size() >= 2) 
             {
                 String fullText = discName.get(1).getString();
@@ -119,10 +111,10 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> {
         }
         else
         {
-            graphics.drawString(this.font, "Disc: None", this.leftPos + 15, textY, 0xFFE0E0E0, false);
+            graphics.drawString(this.font, (Component.translatable("general.ongakumod.nodisc").getString()) , this.leftPos + 15, textY, 0xFFE0E0E0, false);
         }
         boolean isPhysicallyLinked = this.menu.IsControllerLoaded(); 
-        String mode = isPhysicallyLinked ? "Direct Connection" : "Remote Snapshot Mode";
+        String mode = isPhysicallyLinked ? (Component.translatable("terminal.ongakumod.direct_connection").getString()) : (Component.translatable("terminal.ongakumod.remote_connection").getString());
         int modeColor = isPhysicallyLinked ? 0xFF55FF55 : 0xFFFFAA55;
         graphics.drawString(this.font,mode,this.leftPos + 15,textY + (lineSpacing * 2),modeColor,false);
     }

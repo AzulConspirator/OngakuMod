@@ -3,9 +3,12 @@ package com.azulc.ongakumod.item;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.util.ControllerRegistry;
+import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -25,7 +28,11 @@ import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.entity.BlockEntity;
+
+import java.rmi.registry.Registry;
 import java.util.UUID;
+
+import org.openjdk.nashorn.internal.objects.Global;
 
 public class TerminalBlockItem extends BlockItem {
 
@@ -42,6 +49,12 @@ public class TerminalBlockItem extends BlockItem {
     public void setNetworkId(ItemStack stack, UUID id) {
         CompoundTag tag = new CompoundTag();
         tag.putUUID("controller_id", id);
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+    }
+    
+    public static void ClearNetworkId(ItemStack stack) {
+        CompoundTag tag = new CompoundTag();
+        tag.putUUID("controller_id", null);
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
@@ -69,48 +82,58 @@ public class TerminalBlockItem extends BlockItem {
         return InteractionResult.PASS;
     }
 
-@Override
-public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
-    ItemStack stack = player.getItemInHand(hand);
-    
-    if (player.isCrouching()) {
-        return InteractionResultHolder.pass(stack);
-    }
-
-    if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-        UUID controllerId = getNetworkId(stack);
-        
-        if (controllerId != null) {
-            serverPlayer.openMenu(new MenuProvider() {
-                @Override
-                public Component getDisplayName() {
-                    return Component.literal("Wireless Vinyl Terminal");
-                }
-
-                @Override
-                public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
-                    return new TerminalMenu(id, inv, controllerId);
-                }
-            }, buf -> {
-                // 1. Identify flag: true = opened from item
-                buf.writeBoolean(true); 
-                // 2. Write network link identity
-                buf.writeUUID(controllerId);
-                // 3. Stream Snapshot Data
-                ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(controllerId);
-                if (currentSnapshot != null) {
-                    buf.writeBoolean(true);
-                    currentSnapshot.write(buf);
-                    buf.writeBoolean(serverPlayer.serverLevel().isLoaded(currentSnapshot.pos()));
-                } else {
-                    buf.writeBoolean(false);
-                }
-            });
-            return InteractionResultHolder.success(stack);
-        } else {
-            player.displayClientMessage(Component.literal("Terminal is not linked to a controller!"), true);
+    @Override
+    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+        ItemStack stack = player.getItemInHand(hand);
+        if (player.isCrouching()) 
+        {
+            return InteractionResultHolder.pass(stack);
         }
+        if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) 
+        {
+            UUID controllerId = getNetworkId(stack);
+            GlobalPos Pos = ControllerRegistry.get((ServerLevel)level).get(controllerId);
+            if (controllerId != null && Pos != null) 
+            {
+                if(!LinkHelper.ControllerExist(controllerId, level, Pos) && level.isLoaded(Pos.pos()))
+                {
+                    player.displayClientMessage(Component.literal("Controller Missing, Terminal unlinked!"), true);
+                    ControllerRegistry.get((ServerLevel)level).unregister(controllerId);
+                    ClearNetworkId(stack);
+                    return InteractionResultHolder.fail(stack);
+                }
+                serverPlayer.openMenu(new MenuProvider() 
+                {
+                    @Override
+                    public Component getDisplayName() {
+                        return Component.literal("Wireless Vinyl Terminal");
+                    }
+
+                    @Override
+                    public AbstractContainerMenu createMenu(int id, Inventory inv, Player p) {
+                        return new TerminalMenu(id, inv, controllerId,false);
+                    }
+                }, buf -> 
+                {
+                    // 1. Identify flag: true = opened from item
+                    buf.writeBoolean(true); 
+                    // 2. Write network link identity
+                    buf.writeUUID(controllerId);
+                    // 3. Stream Snapshot Data
+                    ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(controllerId);
+                    if (currentSnapshot != null) {
+                        buf.writeBoolean(true);
+                        currentSnapshot.write(buf);
+                        buf.writeBoolean(serverPlayer.serverLevel().isLoaded(currentSnapshot.pos()));
+                    } else {
+                        buf.writeBoolean(false);
+                    }
+                });
+                return InteractionResultHolder.success(stack);
+            }
+            player.displayClientMessage(Component.literal("Terminal is not linked to a controller!"), true);
+            
+        }
+        return InteractionResultHolder.success(stack);
     }
-    return InteractionResultHolder.success(stack);
-}
 }

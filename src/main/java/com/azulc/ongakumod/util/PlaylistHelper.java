@@ -127,5 +127,4 @@ public class PlaylistHelper {
         }
         PacketDistributor.sendToPlayersTrackingChunk((ServerLevel) Lvl, new ChunkPos(Controller.getBlockPos()),  new SyncPlaylistPayload(sortedStacks));
     }
-
 }

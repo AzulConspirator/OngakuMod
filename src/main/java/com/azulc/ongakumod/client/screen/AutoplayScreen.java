@@ -79,14 +79,14 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         int spacing = 21;
         // 1. STOP
         this.addRenderableWidget(new IconButton(startX, startY, 20, 20, 2, false, 
-            Component.literal("Stop"), (b) -> {
+            Component.translatable("general.ongakumod.stop"), (b) -> {
             PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), "", ManagePlaylistPayload.Action.STOP,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
 
         // 2. PLAY
         this.addRenderableWidget(new IconButton(startX + spacing, startY, 20, 20, 0, false, 
-            Component.literal("Play"), (b) -> {
+            Component.translatable("general.ongakumod.play"), (b) -> {
             MusicListWidget.MusicEntry selected = this.musicList.getSelected();
             if (selected != null) {
                 this.setSelectedDisc(selected.index); 
@@ -95,14 +95,14 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         }));
         // 3. SKIP
         this.addRenderableWidget(new IconButton(startX + (spacing * 2), startY, 20, 20, 1, false, 
-            Component.literal("Skip"), (b) -> {
+            Component.translatable("general.ongakumod.skip"), (b) -> {
             PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), "", ManagePlaylistPayload.Action.SKIP,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
 
         // 4. AUTOPLAY (Indicator in corner)
         this.addRenderableWidget(new IconButton(startX + (spacing * 3), startY, 20, 20, 3, true, 
-            Component.literal("Autoplay"), (b) -> {
+            Component.translatable("general.ongakumod.autoplay"), (b) -> {
             PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), "", ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
@@ -143,7 +143,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
             default -> 0xFF888888;
         };
         graphics.fill(this.leftPos + 10, this.topPos + 10, this.leftPos + 18, this.topPos + 18, indicatorColor);
-        graphics.drawString(this.font, "Sound Box", this.leftPos + 22, this.topPos + 10, 0xFFFFFFFF, false);
+        graphics.drawString(this.font, Component.translatable("block.ongakumod.autoplay_controller"), this.leftPos + 22, this.topPos + 10, 0xFFFFFFFF, false);
 
         // 2. Now Playing Logic
         int currentVisualIndex = this.menu.getData().get(1); // This is the Collapsed Index 
@@ -197,7 +197,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         }
         else 
         {
-            graphics.drawCenteredString(this.font, "No Disc", this.leftPos + 45, this.topPos + 65, 0xFFAAAAAA);
+            graphics.drawCenteredString(this.font, (Component.translatable("general.ongakumod.nodisc").getString()), this.leftPos + 45, this.topPos + 65, 0xFFAAAAAA);
         }
         super.render(graphics, mouseX, mouseY, partialTick); 
     }

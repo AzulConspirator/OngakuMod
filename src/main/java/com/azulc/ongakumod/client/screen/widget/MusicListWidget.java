@@ -1,6 +1,7 @@
 package com.azulc.ongakumod.client.screen.widget;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
@@ -43,14 +44,14 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
 
         this.clearEntries();
         // 1. Group the discs
-        java.util.Map<net.minecraft.world.item.Item, CollapsedMusicEntry> groupedDiscs = new java.util.LinkedHashMap<>();
+        Map<Item, CollapsedMusicEntry> groupedDiscs = new java.util.LinkedHashMap<>();
 
         for (int i = 0; i < discs.size(); i++) 
         {
             ItemStack stack = discs.get(i);
             if (stack.isEmpty()) continue;
 
-            net.minecraft.world.item.Item item = stack.getItem();
+            Item item = stack.getItem();
             if (groupedDiscs.containsKey(item)) {
                 CollapsedMusicEntry existing = groupedDiscs.get(item);
                 groupedDiscs.put(item, new CollapsedMusicEntry(stack, existing.count() + 1, existing.originalIndex()));

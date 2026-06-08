@@ -6,7 +6,7 @@ import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -20,19 +20,18 @@ public class TerminalMenu extends AbstractContainerMenu {
     @SuppressWarnings("unused")
     private final TerminalBlockEntity terminal;
     private final UUID networkId;
-    private final ControllerRegistry.ControllerSnapshot snapshot; 
-    // FIX: Declare clean without hardcoding null references
+    
+    // REMOVED 'final': This must be hot-swapped dynamically when server syncs occur
+    private ControllerSnapshot snapshot; 
     private final Optional<BlockPos> terminalBlockPos;
     private boolean isControllerLoaded = false;
+    private boolean isBlockMode = false;
 
-    // Dynamic Packet/Buffer Decoder constructor (RUNS ON CLIENT ONLY)
-    public TerminalMenu(int id, Inventory inv, FriendlyByteBuf buf) {
+    // Client-side initialization constructor
+    public TerminalMenu(int id, Inventory inv, RegistryFriendlyByteBuf buf) {
         super(OngakuMod.TERMINAL_MENU.get(), id);
-        // 1. Read the boolean flag
         boolean openedFromItem = buf.readBoolean();
-        // 2. Read UUID
         this.networkId = buf.readUUID();
-        // 3. Read BlockPos only if it's NOT an item
         if (!openedFromItem) {
             BlockPos pos = buf.readBlockPos();
             this.terminalBlockPos = Optional.of(pos);
@@ -41,9 +40,7 @@ public class TerminalMenu extends AbstractContainerMenu {
             this.terminalBlockPos = Optional.empty();
             this.terminal = null;
         }
-        // 4. Read Snapshot flag
         boolean hasSnapshot = buf.readBoolean();
-        // 5. Read snapshot
         if (hasSnapshot) {
             this.snapshot = ControllerSnapshot.read(buf);
             this.isControllerLoaded = buf.readBoolean();
@@ -51,12 +48,14 @@ public class TerminalMenu extends AbstractContainerMenu {
             this.snapshot = null;
         }
     }
-    // Direct server-side initialization constructor (Item variant)
-    public TerminalMenu(int id, Inventory inv, UUID controllerId) {
+
+    // Server-side Item variant constructor
+    public TerminalMenu(int id, Inventory inv, UUID controllerId, boolean isBlockMode) {
         super(OngakuMod.TERMINAL_MENU.get(), id); 
         this.terminal = null;
         this.networkId = controllerId;
         this.terminalBlockPos = Optional.empty();
+        this.isBlockMode = isBlockMode;
         if (inv.player.level() instanceof ServerLevel serverLevel) { 
             this.snapshot = ControllerRegistry.get(serverLevel).getSnapshot(controllerId); 
             this.isControllerLoaded = this.snapshot != null && serverLevel.isLoaded(this.snapshot.pos());
@@ -65,12 +64,13 @@ public class TerminalMenu extends AbstractContainerMenu {
         }
     }
 
-    // Direct server-side initialization constructor (Block variant)
-    public TerminalMenu(int id, Inventory inv, TerminalBlockEntity terminal) {
+    // Server-side Block variant constructor
+    public TerminalMenu(int id, Inventory inv, TerminalBlockEntity terminal, boolean isBlockMode) {
         super(OngakuMod.TERMINAL_MENU.get(), id); 
         this.terminal = terminal;
         this.networkId = terminal.getNetworkId(); 
         this.terminalBlockPos = Optional.of(terminal.getBlockPos());
+        this.isBlockMode = isBlockMode;
         if (inv.player.level() instanceof ServerLevel serverLevel && this.networkId != null) { 
             this.snapshot = ControllerRegistry.get(serverLevel).getSnapshot(this.networkId); 
             this.isControllerLoaded = this.snapshot != null && serverLevel.isLoaded(this.snapshot.pos());
@@ -79,14 +79,17 @@ public class TerminalMenu extends AbstractContainerMenu {
         }
     }
 
-    public Optional<BlockPos> getTerminalBlockPos() {
-        return this.terminalBlockPos;
-    }
-    
-    public Boolean IsControllerLoaded() {
-        return this.isControllerLoaded;
+    /**
+     * Network Sync Entrypoint: Called by S2C packet handler to instantly refresh client visuals
+     */
+    public void clientUpdateSnapshot(ControllerSnapshot newSnapshot, boolean isControllerLoaded) {
+        this.snapshot = newSnapshot;
+        this.isControllerLoaded = isControllerLoaded;
     }
 
+    public Optional<BlockPos> getTerminalBlockPos() { return this.terminalBlockPos; }
+    public Boolean IsControllerLoaded() { return this.isControllerLoaded; }
+    public Boolean IsblockMode() { return this.isBlockMode; }
     public ControllerSnapshot getSnapshot() { return snapshot; }
     public UUID getNetworkId() { return networkId; }
 

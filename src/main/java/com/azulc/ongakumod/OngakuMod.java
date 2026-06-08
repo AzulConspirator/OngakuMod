@@ -25,6 +25,7 @@ import com.azulc.ongakumod.network.ServerPayloadHandler;
 import com.azulc.ongakumod.network.SyncPlaylistPayload;
 import com.azulc.ongakumod.network.TerminalActionPayload;
 import com.azulc.ongakumod.network.TerminalAudioPayload;
+import com.azulc.ongakumod.network.TerminalUpdatePayload;
 import com.mojang.logging.LogUtils;
 
 import net.minecraft.core.BlockPos;
@@ -148,9 +149,14 @@ public class OngakuMod
             ClientPayloadHandler::handleSyncPlaylist
         );
         registrar.playToClient(
-        TerminalAudioPayload.TYPE,
-        TerminalAudioPayload.STREAM_CODEC,
-        ClientPayloadHandler::handleTerminalAudio
+            TerminalAudioPayload.TYPE,
+            TerminalAudioPayload.STREAM_CODEC,
+            ClientPayloadHandler::handleTerminalAudio
+        );
+        registrar.playToClient(
+            TerminalUpdatePayload.TYPE,
+            TerminalUpdatePayload.STREAM_CODEC,
+            ClientPayloadHandler::RefreshSnapshot
         );
         registrar.playToServer(
             ManagePlaylistPayload.TYPE,

@@ -4,11 +4,14 @@ import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.container.AutoplayMenu;
 import com.azulc.ongakumod.item.TuningWrenchItem;
+import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.PlaylistHelper;
+import com.azulc.ongakumod.util.TerminalControlHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.chat.Component;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.ItemInteractionResult;
@@ -28,6 +31,7 @@ import net.minecraft.world.level.block.state.StateDefinition;
 import net.minecraft.world.phys.BlockHitResult;
 
 import java.util.List;
+import java.util.Optional;
 
 import org.jetbrains.annotations.Nullable;
 
@@ -95,5 +99,37 @@ public class AutoplayControllerBlock extends HorizontalDirectionalBlock implemen
             }
         }
         return ItemInteractionResult.SUCCESS;
+    }
+
+    @Override
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+        if (!state.is(newState.getBlock())) {
+            BlockEntity be = level.getBlockEntity(pos);
+            if (be instanceof AutoplayControllerBlockEntity controller) {
+                // Stop the server-side jukebox logic
+                controller.StopJukebox();
+                // Broadcast a stop packet to all players tracking this controller's UUID
+                if (level.getServer() != null) {
+                    for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+                        // Utilizing your existing stop packet structure inside TerminalControlHandler
+                        TerminalControlHandler.dispatchAudio(
+                            player, 
+                            AutoplayControllerBlockEntity.getNetworkId(controller),
+                            null,
+                            true,  // isStopPacket = true
+                            false, // isBlockMode = false (Direct/Item Mode)
+                            Optional.of(BlockPos.ZERO), 
+                            null
+                        );
+                    }
+                }
+                 if(level instanceof ServerLevel serverLevel)
+                {
+                    ControllerRegistry.get(serverLevel).unregister(AutoplayControllerBlockEntity.getNetworkId(controller));
+                }
+            }
+            super.onRemove(state, level, pos, newState, isMoving);
+
+        }
     }
 }

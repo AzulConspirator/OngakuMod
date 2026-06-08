@@ -1,5 +1,7 @@
 package com.azulc.ongakumod.util;
 
+import java.util.UUID;
+
 import javax.annotation.Nullable;
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
@@ -7,9 +9,15 @@ import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.azulc.ongakumod.blockentity.SpeakerBlockEntity;
 
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.JukeboxSong;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 
@@ -171,5 +179,26 @@ public class LinkHelper {
         }
         return -1;
     }
+
+    public static SoundEvent getSoundFromDiscId(Level level, ItemStack discId) 
+    {
+        if (discId == null || discId.isEmpty()) {return null;}
+        return JukeboxSong.fromStack(level.registryAccess(), discId).map(holder -> holder.value().soundEvent().value()).orElse(null);
+    }
     //#endregion
+    public static boolean ControllerExist(UUID UUIDgiven, Level level,GlobalPos BE)
+    {
+        if (level.isLoaded(BE.pos()))
+        {
+            BlockEntity ctrl = level.getBlockEntity(BE.pos());
+            if (ctrl instanceof AutoplayControllerBlockEntity controller) 
+            {
+                if (AutoplayControllerBlockEntity.getNetworkId(controller).equals(UUIDgiven))
+                {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
 }
