@@ -32,11 +32,11 @@ public class ClientPayloadHandler
             payload.soundEvent().ifPresent(soundEvent -> {
                 if (payload.isBlockMode()) {
                 payload.blockPos().ifPresent(pos -> 
-                    TerminalSoundHandler.playBlockModeSound(controllerId,soundEvent,payload.Disc().get(), pos)
+                    TerminalSoundHandler.playBlockModeSound(controllerId,soundEvent,payload.Disc(), pos)
                 );
                 } else {
                     int playerEntityId = Minecraft.getInstance().player.getId();
-                    TerminalSoundHandler.playItemModeSound(controllerId, soundEvent,payload.Disc().get(), playerEntityId);
+                    TerminalSoundHandler.playItemModeSound(controllerId, soundEvent,payload.Disc(), playerEntityId);
                 }
             });
         });

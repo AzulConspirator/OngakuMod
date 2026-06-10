@@ -43,7 +43,7 @@ public class DiscRackBlockEntity extends RandomizableContainerBlockEntity implem
     @Override
     protected AbstractContainerMenu createMenu(int syncId, Inventory inventory) {
         if (this.getContainerSize() == 1) return null; // No GUI for the wall mount
-        return new DiscContainer(syncId, inventory, this);
+        return new DiscContainer(syncId, inventory, this,this.getControllerPos());
     }
 
     @Override

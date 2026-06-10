@@ -1,6 +1,9 @@
 package com.azulc.ongakumod.block;
 
+import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
+import com.azulc.ongakumod.util.LinkHelper;
+import com.azulc.ongakumod.util.PlaylistHelper;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
@@ -56,9 +59,17 @@ public class DiscRackWallBlock extends DiscRackBlock {
                 return InteractionResult.CONSUME;
             } 
             // If rack is empty and player is holding a playable disc
-            else if (inRack.isEmpty() && inHand.has(DataComponents.JUKEBOX_PLAYABLE)) {
+            else if (inRack.isEmpty() && (inHand.has(DataComponents.JUKEBOX_PLAYABLE)||LinkHelper.hasComponentByString(inHand,"etched:music"))) {
                 rack.setItem(0, inHand.split(1));
                 return InteractionResult.CONSUME;
+            }
+            var CtrlPos = rack.getControllerPos();
+            if (CtrlPos != null){            
+                BlockEntity AE = level.getBlockEntity(CtrlPos);
+                if (AE instanceof AutoplayControllerBlockEntity Ctrl)
+                {
+                    PlaylistHelper.broadcastPlaylistUpdate(Ctrl);
+                }
             }
         }
         return InteractionResult.PASS;

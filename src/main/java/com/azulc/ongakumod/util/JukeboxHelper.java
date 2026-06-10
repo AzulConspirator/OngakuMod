@@ -14,9 +14,18 @@ import net.minecraft.world.level.block.JukeboxBlock;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 
-public class JukeboxHelper {
-    public static BlockPos findJukebox(AutoplayControllerBlockEntity Controller) {
+public class JukeboxHelper 
+{
+    public static BlockPos findJukebox(AutoplayControllerBlockEntity Controller) 
+    {
         BlockPos jukeboxPos = null;
+        if (Controller.JukeboxPosition != null)
+        {
+            if (Controller.getLevel().getBlockState(Controller.JukeboxPosition).is(Blocks.JUKEBOX))
+            {
+                return Controller.JukeboxPosition;
+            }
+        }
         for (Direction dir : Direction.values()) {
             BlockPos adjacent = Controller.getBlockPos().relative(dir);
             if (Controller.getLevel().getBlockState(adjacent).is(Blocks.JUKEBOX)) {
@@ -24,6 +33,7 @@ public class JukeboxHelper {
                 break;
             }
         }
+        Controller.JukeboxPosition = jukeboxPos;
         return jukeboxPos;
     }
     public static void reconcileJukeboxState(AutoplayControllerBlockEntity Controller,ItemStack playing) {

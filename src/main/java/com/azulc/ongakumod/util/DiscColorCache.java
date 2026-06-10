@@ -1,7 +1,7 @@
 package com.azulc.ongakumod.util;
 
 import com.azulc.ongakumod.OngakuMod;
-import com.google.common.base.Predicate;
+import com.azulc.ongakumod.compat.EtchedBridge;
 import com.mojang.blaze3d.platform.NativeImage;
 
 import net.minecraft.core.component.DataComponents;
@@ -12,17 +12,14 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.io.InputStream;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class DiscColorCache 
 {
-    private static final Map<Item, DiscColors> CACHE = new HashMap<>();
+    public static final Map<Item, DiscColors> CACHE = new ConcurrentHashMap<>();
+    public static final Map<String, DiscColors> ETCHED_CACHE = new ConcurrentHashMap<>();
     
-    public static final Predicate<ItemStack> FILTER = stack -> {
-        return stack.has(DataComponents.JUKEBOX_PLAYABLE);
-    };
-
     public record DiscColors(
         @javax.annotation.Nullable ResourceLocation customVinylTex,
         @javax.annotation.Nullable ResourceLocation customSleeveTex,
@@ -36,12 +33,19 @@ public class DiscColorCache
         int Index8Color
     ) {}
 
-    public static void update(ResourceManager manager) {
+    public static void update(ResourceManager manager) 
+    {
+        OngakuMod.LOGGER.info("Running Display Solver..");
         CACHE.clear();
-        var playableDiscs = BuiltInRegistries.ITEM.stream()
-            .filter(item -> item.getDefaultInstance().has(DataComponents.JUKEBOX_PLAYABLE))
-            .toList();
-
+        //#region Etched Compat
+        if (OngakuMod.IS_ETCHED_LOADED) {
+            ETCHED_CACHE.clear();
+            OngakuMod.LOGGER.info("Running [Etched] Module");
+            EtchedBridge.EtchedCompatTextureSolver(manager);
+        }
+        //#endregion
+         OngakuMod.LOGGER.info("Running [Vanilla] Module");
+        var playableDiscs = BuiltInRegistries.ITEM.stream().filter(item -> item.getDefaultInstance().has(DataComponents.JUKEBOX_PLAYABLE)).toList();
         for (Item item : playableDiscs) {
             ResourceLocation location = BuiltInRegistries.ITEM.getKey(item);
             // custom texture path
@@ -132,5 +136,27 @@ public class DiscColorCache
         return CACHE.getOrDefault(item, new DiscColors(null,null,_FF22, _FFFF,_FF22,_FF22, _FFFF,_FFFF,_FFFF,_FFFF));
     }
 
+    public static DiscColors getColors(ItemStack stack) 
+    {
+        if (stack.isEmpty()) 
+        {
+            return getColors(stack.getItem());
+        }
+        //Etched Coverage
+        if (OngakuMod.IS_ETCHED_LOADED && LinkHelper.hasComponentByString(stack, "etched:music")) 
+        {
+            String EtchedCode = EtchedBridge.getEtchedUrl(stack);
+            if (EtchedCode != null && EtchedCode.length() > 5)
+            {
+                var EtchedColors = ETCHED_CACHE.get(EtchedCode);
+                if (EtchedColors != null && EtchedColors.customVinylTex != null && EtchedColors.customSleeveTex != null)
+                {
+                    return EtchedColors;
+                }
+            }
+        }
+        return getColors(stack.getItem());
+    }
 
+    public Map<String, DiscColors> getEtchedCache() {return ETCHED_CACHE;}
 }

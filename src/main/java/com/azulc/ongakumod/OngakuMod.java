@@ -47,6 +47,7 @@ import net.neoforged.bus.api.IEventBus;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.ModContainer;
+import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
@@ -120,6 +121,9 @@ public class OngakuMod
         output.accept(TERMINAL_BLOCK_ITEM.get());
     })
     .build());
+    // Mod Compat Check
+    public static final boolean IS_ETCHED_LOADED = ModList.get().isLoaded("etched");
+
     //
     public OngakuMod(IEventBus modEventBus, ModContainer modContainer) 
     {

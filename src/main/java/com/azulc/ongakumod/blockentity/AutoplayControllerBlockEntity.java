@@ -55,6 +55,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     private int songDurationTicks = 0;
     private boolean autoplayEnabled = false;
     public int cachedStatus = 0;
+    public BlockPos JukeboxPosition;
     private final Set<BlockPos> linkedRackPositions = new HashSet<>();
     private final Set<BlockPos> linkedSpeakers = new HashSet<>();
     private final List<Item> customQueueOrder = new ArrayList<>();
@@ -152,9 +153,9 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         if (entity.tickCounter % 20 == 0) {
             entity.validateAndProcess(level,pos);
             if(level instanceof ServerLevel serverLevel)
-                {
-                    ControllerRegistry.get(serverLevel).updateSnapshot(getNetworkId(entity),createSnapshot(entity));
-                }
+            {
+                ControllerRegistry.get(serverLevel).updateSnapshot(getNetworkId(entity),createSnapshot(entity));
+            }
         }
         // Autoplay Engine (Runs every tick)
         if (entity.autoplayEnabled) {
@@ -410,23 +411,26 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
         ItemStack discCopy = refreshedDisc.split(1);
         jukebox.setTheItem(discCopy);
+        // Get Song Details
         Optional<Holder<JukeboxSong>> songHolderOpt = JukeboxSong.fromStack(level.registryAccess(), discCopy);
 
         if (songHolderOpt.isPresent()) {
             Holder<JukeboxSong> songHolder = songHolderOpt.get();
             this.songDurationTicks = songHolder.value().lengthInTicks();
+            if (this.songDurationTicks <= 0) 
+            {
+                // Fallback to a standard 3-minute track length (3600 ticks) 
+                // so the autoplay function doesn't get trapped in a 1-tick skip loop.
+                this.songDurationTicks = 3600; 
+            }
             jukebox.getSongPlayer().play(level, songHolder);
         } else {
             this.songDurationTicks = 0;
         }
         this.songStartTick = level.getGameTime();
-
+        //
         currentPlaylistIndex = playlistIndex;
-        currentlyPlayingEntry = new PlaylistEntry(
-                entry.rackPos(),
-                entry.slotIndex(),
-                discCopy.copy()
-        );
+        currentlyPlayingEntry = new PlaylistEntry(entry.rackPos(),entry.slotIndex(),discCopy.copy());
         BlockState state = level.getBlockState(jukeboxPos);
         BlockState oldState = state;
         BlockState newState = state;

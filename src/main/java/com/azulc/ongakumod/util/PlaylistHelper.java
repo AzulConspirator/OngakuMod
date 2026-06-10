@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.azulc.ongakumod.network.SyncPlaylistPayload;
@@ -105,13 +106,17 @@ public class PlaylistHelper {
             {
                 DisplayPlaylistEntry existing = map.get(key);
                 map.put(key,new DisplayPlaylistEntry(existing.stack(),existing.count() + 1));
-            } 
+            }
+            else if (OngakuMod.IS_ETCHED_LOADED && map.containsKey("etched:etched_music_disc"))
+            {
+                //ignore Etched, assume all are unique instances
+                map.put(key,new DisplayPlaylistEntry(stack.copy(),1));
+            }
             else 
             {
                 map.put(key,new DisplayPlaylistEntry(stack.copy(),1));
             }
         }
-        //broadcastPlaylistUpdate();
         return new ArrayList<>(map.values());
     }
 

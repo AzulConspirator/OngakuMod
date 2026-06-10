@@ -56,21 +56,28 @@ public class TerminalControlHandler {
         BlockPos targetPos = controller.getBlockPos();
         Level level = controller.getLevel();
         
-        switch (actionId) {
+        switch (actionId) 
+        {
             case ACTION_STOP -> {
                 controller.StopJukebox();
                 dispatchAudio(player, networkId,Optional.empty(),  true, isBlockMode, terminalBlockPos, null);
             }
             case ACTION_PLAY_TRACK -> {
                 controller.playNextInQueue();
-                if (controller.currentlyPlayingEntry != null) {
+                if (controller.currentlyPlayingEntry != null) 
+                {
                     SoundEvent sound = LinkHelper.getSoundFromDiscId(level,controller.currentlyPlayingEntry.stack());
-                    if (sound != null) {
-                        dispatchAudio(player, networkId,Optional.empty(), false, isBlockMode, terminalBlockPos, sound);
+                    if (sound != null) 
+                    {
+                        dispatchAudio(player, networkId,Optional.of(controller.currentlyPlayingEntry.stack()), false, isBlockMode, terminalBlockPos, sound);
                     }
-                } else {
+                } 
+                /*
+                else 
+                {
                     dispatchAudio(player, networkId,Optional.empty(),  true, isBlockMode, terminalBlockPos, null);
-                }
+                } 
+                */
             }
             case ACTION_TOGGLE_AP -> controller.toggleAutoplay();
             default -> throw new IllegalArgumentException("Unknown local action ID: " + actionId);

@@ -92,6 +92,7 @@ public class TerminalMenu extends AbstractContainerMenu {
     public Boolean IsblockMode() { return this.isBlockMode; }
     public ControllerSnapshot getSnapshot() { return snapshot; }
     public UUID getNetworkId() { return networkId; }
+    public Boolean IsPlaying(ControllerSnapshot snap) { return snap.currentDisc() !=null; }
 
     @Override public boolean stillValid(Player player) { return true; }
     @Override public ItemStack quickMoveStack(Player player, int index) { return ItemStack.EMPTY; }

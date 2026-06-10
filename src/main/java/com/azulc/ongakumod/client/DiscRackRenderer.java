@@ -59,7 +59,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
             
             ItemStack stack = rack.getItem(0);
             if (!stack.isEmpty()) {
-                DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack.getItem());
+                DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack);
                 // load Sleeve
                 ms.pushPose();
                 ms.scale(scale, scale, scale);
@@ -95,7 +95,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
                     double currentZ = startZ + (i * spacing);
                     ms.translate(-0.5, yOffset, currentZ);
                     ms.mulPose(Axis.XP.rotationDegrees(-10)); // Slight backward tilt
-                    DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack.getItem());
+                    DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack);
                     renderColoredModel(ms.last(), buffer, _Sleevemodel,true, colors, light, overlay);
                     ms.popPose(); 
                 }
@@ -117,7 +117,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
                     ms.pushPose();
                     double currentZ = startZ + (i * spacing);
                     ms.translate(-0.5, yOffset, currentZ); 
-                    DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack.getItem());
+                    DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack);
                     renderColoredModel(ms.last(), buffer, _Vinylmodel,false, colors, light, overlay);
                     ms.popPose(); 
                 }
@@ -143,7 +143,6 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
         
         TextureAtlasSprite newSprite = null;
         if (CustomTex != null) {
-            //OngakuMod.LOGGER.info("Looking Sprite at : "+CustomTex);
             newSprite = getAtlasSprite(CustomTex);
         }
         

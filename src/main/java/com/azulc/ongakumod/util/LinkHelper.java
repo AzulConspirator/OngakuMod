@@ -1,5 +1,6 @@
 package com.azulc.ongakumod.util;
 
+import java.util.Optional;
 import java.util.UUID;
 
 import javax.annotation.Nullable;
@@ -10,8 +11,11 @@ import com.azulc.ongakumod.blockentity.SpeakerBlockEntity;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.JukeboxSong;
@@ -34,7 +38,6 @@ public class LinkHelper {
             if (existingController != null) {
                 if (Controller.getLevel().getBlockEntity(existingController) instanceof AutoplayControllerBlockEntity oldController) 
                 {
-                    // Tell the OLD controller to forget this rack
                     removeLinkedRack(oldController,rackPos);
                 }
             }
@@ -171,7 +174,7 @@ public class LinkHelper {
         if (songHolder != null) 
         {   
             var E = level.registryAccess().registryOrThrow(Registries.JUKEBOX_SONG).getId(songHolder.song().key());
-            OngakuMod.LOGGER.info("ID is " + E);
+            //OngakuMod.LOGGER.info("ID is " + E);
             return E;
         }
         return -1;
@@ -197,5 +200,11 @@ public class LinkHelper {
             }
         }
         return false;
+    }
+
+    public static boolean hasComponentByString(ItemStack stack, String componentId) {
+        ResourceLocation location = ResourceLocation.parse(componentId);
+        Optional<DataComponentType<?>> componentType = BuiltInRegistries.DATA_COMPONENT_TYPE.getOptional(location);
+        return componentType.map(stack::has).orElse(false);
     }
 }

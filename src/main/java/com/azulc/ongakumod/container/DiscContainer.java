@@ -1,9 +1,7 @@
 package com.azulc.ongakumod.container;
 
-import net.minecraft.core.component.DataComponentType;
+import net.minecraft.core.BlockPos;
 import net.minecraft.core.component.DataComponents;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -11,30 +9,35 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.block.entity.BlockEntity;
 
-import java.util.Optional;
 import java.util.function.Predicate;
 
 import com.azulc.ongakumod.OngakuMod;
+import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
+import com.azulc.ongakumod.util.LinkHelper;
+import com.azulc.ongakumod.util.PlaylistHelper;
 
 public class DiscContainer extends AbstractContainerMenu {
     public static final int SIZE = 8;
     public static final Predicate<ItemStack> FILTER = stack -> {
 
-        return stack.has(DataComponents.JUKEBOX_PLAYABLE) || hasComponentByString(stack,"etched:music");
+        return stack.has(DataComponents.JUKEBOX_PLAYABLE) || LinkHelper.hasComponentByString(stack,"etched:music");
     };
 
     protected final Container inventory;
+    private static BlockPos controllerpos;
 
     public DiscContainer(int syncId, Inventory playerInventory) {
-        this(syncId, playerInventory, new SimpleContainer(8));
+        this(syncId, playerInventory, new SimpleContainer(8),controllerpos);
     }
 
-    public DiscContainer(int syncId, Inventory playerInventory, Container inventory) {
+    @SuppressWarnings("static-access")
+    public DiscContainer(int syncId, Inventory playerInventory, Container inventory, BlockPos Controller) {
         super(OngakuMod.DISC_MENU.get(), syncId);
         this.inventory = inventory;
         this.inventory.startOpen(playerInventory.player);
-
+        this.controllerpos = Controller;
         // inventory
         for(int ind = 0; ind < 8; ind++) {
             this.addSlot(new ConditionalSlot(FILTER, inventory, ind, 17 + ind * 18, 18));
@@ -56,10 +59,19 @@ public class DiscContainer extends AbstractContainerMenu {
         }
     }
 
+    @SuppressWarnings("static-access")
     @Override
     public void removed(Player playerEntity) {
+        if (this.controllerpos != null)
+        {
+           BlockEntity AC = playerEntity.level().getBlockEntity(controllerpos);
+           if (AC instanceof AutoplayControllerBlockEntity Ctrl){
+                PlaylistHelper.broadcastPlaylistUpdate(Ctrl);
+           }
+        }
         super.removed(playerEntity);
         this.inventory.stopOpen(playerEntity);
+
     }
 
     @Override
@@ -92,17 +104,6 @@ public class DiscContainer extends AbstractContainerMenu {
         }
 
         return stack;
-    }
-    
-    public static boolean hasComponentByString(ItemStack stack, String componentId) {
-        // 1. Convert string (e.g., "minecraft:custom_name") into a ResourceLocation
-        ResourceLocation location = ResourceLocation.parse(componentId);
-        
-        // 2. Look up the DataComponentType in the built-in registry
-        Optional<DataComponentType<?>> componentType = BuiltInRegistries.DATA_COMPONENT_TYPE.getOptional(location);
-        
-        // 3. If found, use stack.has() to see if the item stack contains it
-        return componentType.map(stack::has).orElse(false);
     }
 }
 
