@@ -64,20 +64,15 @@ public class TerminalControlHandler {
             }
             case ACTION_PLAY_TRACK -> {
                 controller.playNextInQueue();
-                if (controller.currentlyPlayingEntry != null) 
-                {
-                    SoundEvent sound = LinkHelper.getSoundFromDiscId(level,controller.currentlyPlayingEntry.stack());
-                    if (sound != null) 
-                    {
-                        dispatchAudio(player, networkId,Optional.of(controller.currentlyPlayingEntry.stack()), false, isBlockMode, terminalBlockPos, sound);
+                if (controller.currentlyPlayingEntry != null) {
+                    ItemStack stack = controller.currentlyPlayingEntry.stack();
+                    SoundEvent sound = LinkHelper.getSoundFromDiscId(level, stack);
+                    
+                    // ALLOW the packet through if it's an Etched disc, even if sound is null
+                    if (sound != null || LinkHelper.hasComponentByString(stack, "etched:music")) {
+                        dispatchAudio(player, networkId, Optional.of(stack), false, isBlockMode, terminalBlockPos, sound);
                     }
-                } 
-                /*
-                else 
-                {
-                    dispatchAudio(player, networkId,Optional.empty(),  true, isBlockMode, terminalBlockPos, null);
-                } 
-                */
+                }
             }
             case ACTION_TOGGLE_AP -> controller.toggleAutoplay();
             default -> throw new IllegalArgumentException("Unknown local action ID: " + actionId);
@@ -124,9 +119,14 @@ public class TerminalControlHandler {
                 
                 currentDisc = playlist.get(trackIndex);
                 startTick = level.getGameTime();
-                SoundEvent sound = LinkHelper.getSoundFromDiscId(level, currentDisc);
-                if (sound != null) {
-                    dispatchAudio(player, controllerUuid,Optional.of(currentDisc), false, isBlockMode, terminalBlockPos, sound);
+                if (currentDisc != null) {
+                    ItemStack stack = currentDisc;
+                    SoundEvent sound = LinkHelper.getSoundFromDiscId(level, stack);
+                    
+                    // ALLOW the packet through if it's an Etched disc, even if sound is null
+                    if (sound != null || LinkHelper.hasComponentByString(stack, "etched:music")) {
+                        dispatchAudio(player, controllerUuid, Optional.of(stack), false, isBlockMode, terminalBlockPos, sound);
+                    }
                 }
             }
             case ACTION_TOGGLE_AP -> apEnabled = !apEnabled;

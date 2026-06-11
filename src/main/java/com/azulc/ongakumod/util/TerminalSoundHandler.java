@@ -3,7 +3,6 @@ package com.azulc.ongakumod.util;
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.compat.EtchedBridge;
 
-import gg.moonflower.etched.core.Etched;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.resources.sounds.EntityBoundSoundInstance;
@@ -50,20 +49,20 @@ public class TerminalSoundHandler
 
     // --- MODE 1: BLOCK MODE (Static Position Attenuation) ---
     public static void playBlockModeSound(UUID controllerId, SoundEvent soundEvent,Optional<ItemStack> Disc, BlockPos pos) {
-        // SimpleSoundInstance.forJukeboxSong scales volume and creates standard jukebox attenuation dropoffs
-/*         if(OngakuMod.IS_ETCHED_LOADED  && Disc.get() != null)
-        {
-            if (LinkHelper.hasComponentByString(Disc.get(), "etched:music"))
-            {
-                EtchedBridge.EtchedBlockSound(pos, Disc.get());
+        if (OngakuMod.IS_ETCHED_LOADED && Disc.isPresent()) {
+            ItemStack stack = Disc.get();
+            if (EtchedBridge.hasEtchedMusic(stack)) {
+                OngakuMod.LOGGER.info("[TerminalBlock] Retrieving Etched Audio");
+                EtchedBridge.createEtchedBlockSound(pos, stack, Minecraft.getInstance().level).ifPresent(sound -> playSound(controllerId, sound));
                 return;
             }
-        } */
+        }
+        
         playSound(controllerId, SimpleSoundInstance.forJukeboxSong(soundEvent, Vec3.atCenterOf(pos)));
     }
 
     // --- MODE 2: ITEM MODE / MP3 MODE (Entity-Bound Attenuation) ---
-    public static void playItemModeSound(UUID controllerId, SoundEvent soundEvent,Optional<ItemStack> Disc, int entityId) {
+    public static void playItemModeSound(UUID controllerId, SoundEvent soundEvent, Optional<ItemStack> Disc, int entityId) {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
 
@@ -73,14 +72,14 @@ public class TerminalSoundHandler
             return;
         }
 
-/*         if(OngakuMod.IS_ETCHED_LOADED  && Disc.get() != null)
-        {
-            if (LinkHelper.hasComponentByString(Disc.get(), "etched:music"))
-            {
-                EtchedBridge.EtchedEntitySound(entityId,Disc.get());
+        if (OngakuMod.IS_ETCHED_LOADED && Disc.isPresent()) {
+            ItemStack stack = Disc.get();
+            if (EtchedBridge.hasEtchedMusic(stack)) {
+                OngakuMod.LOGGER.info("[Terminal] Retrieving Etched Audio");
+                EtchedBridge.createEtchedEntitySound(entity, stack).ifPresent(sound -> playSound(controllerId, sound));
                 return;
             }
-        } */
+        }
         playSound(controllerId, new EntityBoundSoundInstance(soundEvent, SoundSource.RECORDS, 1.0F, 1.0F, entity, level.random.nextLong()) 
         {
             @Override

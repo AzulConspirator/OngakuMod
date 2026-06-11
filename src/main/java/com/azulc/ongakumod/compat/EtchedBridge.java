@@ -1,24 +1,27 @@
 package com.azulc.ongakumod.compat;
 
-import java.util.List;
 import java.util.Locale;
 
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.util.DiscColorCache;
 import com.azulc.ongakumod.util.DiscColorCache.DiscColors;
 
+import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
+import gg.moonflower.etched.api.record.PlayableRecord;
 import gg.moonflower.etched.api.record.TrackData;
-import gg.moonflower.etched.api.sound.SoundTracker;
 import gg.moonflower.etched.core.registry.EtchedComponents;
 
 import net.minecraft.server.packs.resources.Resource;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.level.LevelAccessor;
+
 import java.io.Reader;
 import java.lang.reflect.Type;
 import java.util.Map;
@@ -77,16 +80,16 @@ public class EtchedBridge
         }
     }
 
-    public static void EtchedBlockSound(BlockPos Pos, ItemStack stack)
-    {
-        var musicData = stack.get(EtchedComponents.MUSIC); 
-        if (musicData != null) {
-            TrackData[] Tracks = (TrackData[]) musicData.tracks().toArray(); 
-            SoundTracker.playBlockRecord(Pos, Tracks, 0);
-        }
+    public static boolean hasEtchedMusic(ItemStack stack) {
+        return PlayableRecord.isPlayableRecord(stack);
     }
-    public static void EtchedEntitySound(int EntityId, ItemStack stack)
-    {
-        SoundTracker.playEntityRecord(stack, EntityId, 0, false);
+
+    public static Optional<SoundInstance> createEtchedBlockSound(BlockPos pos, ItemStack stack, LevelAccessor level) {
+        // '0' designates the first track on the album
+        return PlayableRecord.createBlockSound(stack, level, pos, 0); 
+    }
+
+    public static Optional<SoundInstance> createEtchedEntitySound(Entity entity, ItemStack stack) {
+        return PlayableRecord.createEntitySound(stack, entity, 0);
     }
 }
