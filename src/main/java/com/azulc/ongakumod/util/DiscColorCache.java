@@ -55,7 +55,7 @@ public class DiscColorCache
             if (manager.getResource(vinylFile).isPresent()&& manager.getResource(sleeveFile).isPresent())
             {
                 CACHE.put(item,new DiscColors(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID,"vvs_decor_custom/" + location.getPath()),ResourceLocation.fromNamespaceAndPath( OngakuMod.MODID,"vvs_decor_custom/" +location.getPath() +"_cover" ),0,0,0,0,0,0,0,0));
-                OngakuMod.LOGGER.info("Using custom disc textures for {}", location);
+                OngakuMod.LOGGER.info("SUCCESS: Using custom textures for {}", location);
                 continue;
             }
             //Fallback: Custom Item Texture Color Sampling
@@ -131,9 +131,11 @@ public class DiscColorCache
 
     public static DiscColors getColors(Item item) 
     {
-        int _FF22 = 0xFF222222;
-        int _FFFF = 0xFFFFFFFF;
-        return CACHE.getOrDefault(item, new DiscColors(null,null,_FF22, _FFFF,_FF22,_FF22, _FFFF,_FFFF,_FFFF,_FFFF));
+        int Color1 = 0xFF404040;
+        int Color2 = 0xFF515151;
+        int Color3 = 0xFFFFFFFF;
+        int Color4 = 0xFF262626;
+        return CACHE.getOrDefault(item, new DiscColors(null,null,Color1, Color2,Color3,Color3, Color3,Color4,Color4,Color4));
     }
 
     public static DiscColors getColors(ItemStack stack) 

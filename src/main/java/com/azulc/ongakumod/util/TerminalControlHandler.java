@@ -67,8 +67,6 @@ public class TerminalControlHandler {
                 if (controller.currentlyPlayingEntry != null) {
                     ItemStack stack = controller.currentlyPlayingEntry.stack();
                     SoundEvent sound = LinkHelper.getSoundFromDiscId(level, stack);
-                    
-                    // ALLOW the packet through if it's an Etched disc, even if sound is null
                     if (sound != null || LinkHelper.hasComponentByString(stack, "etched:music")) {
                         dispatchAudio(player, networkId, Optional.of(stack), false, isBlockMode, terminalBlockPos, sound);
                     }
@@ -110,7 +108,6 @@ public class TerminalControlHandler {
             }
             case ACTION_PLAY_TRACK -> 
             {
-                // Sanitize uninitialized track bounds before attempting an increment lookahead
                 if (trackIndex < 0 || trackIndex >= playlist.size()) {
                     trackIndex = 0;
                 } else {
@@ -122,8 +119,6 @@ public class TerminalControlHandler {
                 if (currentDisc != null) {
                     ItemStack stack = currentDisc;
                     SoundEvent sound = LinkHelper.getSoundFromDiscId(level, stack);
-                    
-                    // ALLOW the packet through if it's an Etched disc, even if sound is null
                     if (sound != null || LinkHelper.hasComponentByString(stack, "etched:music")) {
                         dispatchAudio(player, controllerUuid, Optional.of(stack), false, isBlockMode, terminalBlockPos, sound);
                     }

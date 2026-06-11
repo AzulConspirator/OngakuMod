@@ -45,37 +45,43 @@ public class EtchedBridge
         return null;
     }
 
-    public static void EtchedCompatTextureSolver(ResourceManager manager) {
+    public static void EtchedCompatTextureSolver(ResourceManager manager) 
+    {
         ResourceLocation jsonLocation = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/vvs_decor_custom/etched/etched_list.json");
         Optional<Resource> jsonResource = manager.getResource(jsonLocation);
-        if (jsonResource.isEmpty()) {
+        if (jsonResource.isEmpty()) 
+        {
             OngakuMod.LOGGER.warn("Missing etched alias file at: {}", jsonLocation);
             return;
         }
 
-        try (Reader _reader = jsonResource.get().openAsReader()) {
+        try (Reader _reader = jsonResource.get().openAsReader())
+        {
             Gson Gson = new Gson();
             Type mapType = new TypeToken<Map<String, String>>(){}.getType();
             Map<String, String> aliasMap = Gson.fromJson(_reader, mapType);
             if (aliasMap == null) return;
-
-            // Loop over EVERY entry completely without breaking or returning early
-            for (Map.Entry<String, String> entry : aliasMap.entrySet()) {
+            for (Map.Entry<String, String> entry : aliasMap.entrySet()) 
+            {
                 String urlKey = entry.getKey();
                 String aliasValue = entry.getValue().toLowerCase(Locale.ROOT);
 
                 ResourceLocation vinylResource = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/vvs_decor_custom/etched/etched_music_disc_" + aliasValue + ".png");
                 ResourceLocation sleeveResource = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/vvs_decor_custom/etched/etched_music_disc_" + aliasValue + "_cover.png");
 
-                if (manager.getResource(vinylResource).isPresent() && manager.getResource(sleeveResource).isPresent()) {
-                    // Populate the shared cache directly right here
+                if (manager.getResource(vinylResource).isPresent() && manager.getResource(sleeveResource).isPresent()) 
+                {
                     DiscColorCache.ETCHED_CACHE.put(urlKey, new DiscColors(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "vvs_decor_custom/etched/etched_music_disc_" + aliasValue),ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "vvs_decor_custom/etched/etched_music_disc_" + aliasValue + "_cover"),0, 0, 0, 0, 0, 0, 0, 0));
                     OngakuMod.LOGGER.info("Successfully mapped URL [{}] to alias textures [{}]", urlKey, aliasValue);
-                } else {
+                } 
+                else 
+                {
                     OngakuMod.LOGGER.error("Textures were missing for Etched asset: {}", aliasValue);
                 }
             }
-        } catch (Exception e) {
+        } 
+        catch (Exception e) 
+        {
             OngakuMod.LOGGER.error("Failed to parse etched alias JSON: {}", e.getMessage());
         }
     }

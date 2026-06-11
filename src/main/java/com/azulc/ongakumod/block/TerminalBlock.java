@@ -2,12 +2,14 @@ package com.azulc.ongakumod.block;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import com.azulc.ongakumod.blockentity.TerminalBlockEntity;
 import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.LinkHelper;
+import com.azulc.ongakumod.util.TerminalControlHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -116,13 +118,15 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
         if (!state.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof TerminalBlockEntity terminal && terminal.getNetworkId() != null) {
-                // Package UUID back into the drop
+            if (be instanceof TerminalBlockEntity terminal && terminal.getNetworkId() != null) 
+            {
                 ItemStack dropStack = new ItemStack(this);
-                CompoundTag tag = new CompoundTag();
+                CompoundTag tag = new CompoundTag();                
                 tag.putUUID("controller_id", terminal.getNetworkId());
                 dropStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
-                
+                for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
+                    TerminalControlHandler.dispatchAudio(player, terminal.getNetworkId(), Optional.empty(), true, true,Optional.of(pos), null);
+                }
                 Block.popResource(level, pos, dropStack);
             }
             super.onRemove(state, level, pos, newState, isMoving);
@@ -134,12 +138,11 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
         if (!level.isClientSide) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof TerminalBlockEntity terminalBE) {
-                // Read from the item's CustomData component
                 CustomData customData = stack.getOrDefault(DataComponents.CUSTOM_DATA, CustomData.EMPTY);
                 CompoundTag tag = customData.copyTag();
                 if (tag.hasUUID("controller_id")) {
                     UUID id = tag.getUUID("controller_id");
-                    terminalBE.setNetworkId(id); // Ensure your BlockEntity has this setter and calls setChanged()
+                    terminalBE.setNetworkId(id);
                 }
             }
         }
@@ -166,7 +169,7 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
                     }
                     serverPlayer.openMenu(new SimpleMenuProvider(
                     (id, inv, p) -> new TerminalMenu(id, inv, terminal,true), 
-                    Component.literal("Vinyl Terminal")
+                    Component.literal("")
                     ), buf -> {
                         buf.writeBoolean(false);
                         buf.writeUUID(terminal.getNetworkId());

@@ -102,25 +102,17 @@ public class AutoplayControllerBlock extends HorizontalDirectionalBlock implemen
     }
 
     @Override
-    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
+    protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) 
+    {
         if (!state.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof AutoplayControllerBlockEntity controller) {
-                // Stop the server-side jukebox logic
+            if (be instanceof AutoplayControllerBlockEntity controller) 
+            {
                 controller.StopJukebox();
-                // Broadcast a stop packet to all players tracking this controller's UUID
-                if (level.getServer() != null) {
+                if (level.getServer() != null) 
+                {
                     for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                        // Utilizing your existing stop packet structure inside TerminalControlHandler
-                        TerminalControlHandler.dispatchAudio(
-                            player, 
-                            AutoplayControllerBlockEntity.getNetworkId(controller),
-                            null,
-                            true,  // isStopPacket = true
-                            false, // isBlockMode = false (Direct/Item Mode)
-                            Optional.of(BlockPos.ZERO), 
-                            null
-                        );
+                        TerminalControlHandler.dispatchAudio(player, AutoplayControllerBlockEntity.getNetworkId(controller), Optional.empty(),true, false,Optional.of(BlockPos.ZERO),  null);
                     }
                 }
                  if(level instanceof ServerLevel serverLevel)
@@ -129,7 +121,6 @@ public class AutoplayControllerBlock extends HorizontalDirectionalBlock implemen
                 }
             }
             super.onRemove(state, level, pos, newState, isMoving);
-
         }
     }
 }

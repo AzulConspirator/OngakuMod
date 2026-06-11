@@ -9,6 +9,7 @@ import java.util.Set;
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
+import com.azulc.ongakumod.compat.EtchedBridge;
 import com.azulc.ongakumod.network.SyncPlaylistPayload;
 
 import net.minecraft.core.BlockPos;
@@ -23,7 +24,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public class PlaylistHelper {
     
     public record PlaylistEntry( BlockPos rackPos,int slotIndex,ItemStack stack) {}
-    public record DisplayPlaylistEntry( ItemStack stack, int count) {}
+    public record DisplayPlaylistEntry(ItemStack stack, int count) {}
 
     public static List<PlaylistEntry> buildPlaylist(AutoplayControllerBlockEntity Controller) 
     {
@@ -34,9 +35,11 @@ public class PlaylistHelper {
         // Track unique item types physically present in the racks/jukebox
         Set<Item> physicalItemTypes = new java.util.HashSet<>();
         // 1. Physical scan of racks
-        for (BlockPos rackPos : linkedRackPositions) {
+        for (BlockPos rackPos : linkedRackPositions) 
+        {
             if (!lvl.isLoaded(rackPos)) continue;
-            if (lvl.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) {
+            if (lvl.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) 
+            {
                 for (int i = 0; i < rack.getContainerSize(); i++) {
                     ItemStack stack = rack.getItem(i);
                     if (!stack.isEmpty()) {
@@ -101,20 +104,20 @@ public class PlaylistHelper {
         {
             ItemStack stack = entry.stack();
             String key = stack.getItem().toString();
+            String uniqueGroupKey = key;
 
-            if (map.containsKey(key)) 
+            if (OngakuMod.IS_ETCHED_LOADED && key =="etched:etched_music_disc")
             {
-                DisplayPlaylistEntry existing = map.get(key);
-                map.put(key,new DisplayPlaylistEntry(existing.stack(),existing.count() + 1));
+                uniqueGroupKey = key + "_" + EtchedBridge.getEtchedUrl(stack);
             }
-            else if (OngakuMod.IS_ETCHED_LOADED && map.containsKey("etched:etched_music_disc"))
+            if (map.containsKey(uniqueGroupKey)) 
             {
-                //ignore Etched, assume all are unique instances
-                map.put(key,new DisplayPlaylistEntry(stack.copy(),1));
+                DisplayPlaylistEntry existing = map.get(uniqueGroupKey);
+                map.put(uniqueGroupKey,new DisplayPlaylistEntry(existing.stack(),existing.count() + 1));
             }
             else 
             {
-                map.put(key,new DisplayPlaylistEntry(stack.copy(),1));
+                map.put(uniqueGroupKey,new DisplayPlaylistEntry(stack.copy(),1));
             }
         }
         return new ArrayList<>(map.values());
