@@ -80,7 +80,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         // 1. STOP
         this.addRenderableWidget(new IconButton(startX, startY, 20, 20, 2, false, 
             Component.translatable("general.ongakumod.stop"), (b) -> {
-            PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), "", ManagePlaylistPayload.Action.STOP,Optional.empty()));
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.STOP,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
 
@@ -96,14 +96,14 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         // 3. SKIP
         this.addRenderableWidget(new IconButton(startX + (spacing * 2), startY, 20, 20, 1, false, 
             Component.translatable("general.ongakumod.skip"), (b) -> {
-            PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), "", ManagePlaylistPayload.Action.SKIP,Optional.empty()));
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.SKIP,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
 
         // 4. AUTOPLAY (Indicator in corner)
         this.addRenderableWidget(new IconButton(startX + (spacing * 3), startY, 20, 20, 3, true, 
             Component.translatable("general.ongakumod.autoplay"), (b) -> {
-            PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), "", ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY,Optional.empty()));
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
         }));
     }
@@ -115,7 +115,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
 
     public void setSelectedDisc(int index) 
     {
-        PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), "", ManagePlaylistPayload.Action.PLAY,Optional.of(index)));         
+        PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.PLAY,Optional.of(index)));         
     }
 
     @Override

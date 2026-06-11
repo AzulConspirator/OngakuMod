@@ -4,10 +4,8 @@ import net.minecraft.core.HolderLookup;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.Holder;
-import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.StringTag;
 
 import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
@@ -42,6 +40,8 @@ import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.JukeboxHelper;
 import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.PlaylistHelper;
+import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
+import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DisplayPlaylistEntry;
 import com.azulc.ongakumod.util.PlaylistHelper.PlaylistEntry;
 
@@ -58,8 +58,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     public BlockPos JukeboxPosition;
     private final Set<BlockPos> linkedRackPositions = new HashSet<>();
     private final Set<BlockPos> linkedSpeakers = new HashSet<>();
-    private final List<Item> customQueueOrder = new ArrayList<>();
-    private final Set<Item> excludedTracks = new HashSet<>();
+    private final List<DiscIdentity> customQueueOrder = new ArrayList<>();
+    private final Set<DiscIdentity> excludedTracks = new HashSet<>();
 
     public AutoplayControllerBlockEntity(BlockPos pos, BlockState state) 
     {
@@ -238,13 +238,28 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         ListTag exclusionTag = new ListTag();
         long[] positions = linkedRackPositions.stream().mapToLong(BlockPos::asLong).toArray();
         long[] Speakerpositions = linkedSpeakers.stream().mapToLong(BlockPos::asLong).toArray();
-        // Save Queue as a List of Strings (Registry Names)
-        for (Item item : customQueueOrder) {
-            queueTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
+        // Queue Order
+        for (DiscIdentity item : customQueueOrder)
+        {
+            CompoundTag disc = new CompoundTag();
+
+            disc.putString("item",item.itemId().toString());
+            if(item.variant()!=null)
+            {
+                disc.putString("variant",item.variant());
+            }
+            queueTag.add(disc);
         }
-        // Save Exclusions
-        for (Item item : excludedTracks) {
-            exclusionTag.add(StringTag.valueOf(BuiltInRegistries.ITEM.getKey(item).toString()));
+        //Save Exclusions
+        for (DiscIdentity item : excludedTracks)
+        {
+            CompoundTag disc = new CompoundTag();
+            disc.putString("item",item.itemId().toString());
+            if(item.variant()!=null)
+            {
+                disc.putString("variant",item.variant());
+            }
+            exclusionTag.add(disc);
         }
         tag.putLongArray("LinkedRacks", positions);
         tag.putLongArray("linkedSpeakers", Speakerpositions);
@@ -279,18 +294,18 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         this.autoplayEnabled = tag.getBoolean("autoplayEnabled");
         this.networkId = tag.getUUID("networkId");
         customQueueOrder.clear();
-        ListTag queueTag = tag.getList("queueOrder", 8); // 8 is the ID for StringTag
-        for (int i = 0; i < queueTag.size(); i++) 
+        ListTag queueTag = tag.getList("queueOrder", 10); // 8 is the ID for StringTag
+        for(int i=0;i<queueTag.size();i++)
         {
-            ResourceLocation rl = ResourceLocation.parse(queueTag.getString(i));
-            customQueueOrder.add(BuiltInRegistries.ITEM.get(rl));
+            CompoundTag disc = queueTag.getCompound(i);
+            customQueueOrder.add( new DiscIdentity(ResourceLocation.parse(disc.getString("item")),disc.contains("variant")? disc.getString("variant"): null));
         }
         excludedTracks.clear();
-        ListTag exclusionTag = tag.getList("excludedTracks", 8);
-        for (int i = 0; i < exclusionTag.size(); i++) 
+        ListTag exclusionTag = tag.getList("excludedTracks", 10);
+        for(int i=0;i<exclusionTag.size();i++)
         {
-            ResourceLocation rl = ResourceLocation.parse(exclusionTag.getString(i));
-            excludedTracks.add(BuiltInRegistries.ITEM.get(rl));
+            CompoundTag disc = exclusionTag.getCompound(i);
+            excludedTracks.add( new DiscIdentity(ResourceLocation.parse(disc.getString("item")),disc.contains("variant")? disc.getString("variant"): null));
         }
     }
 
@@ -324,11 +339,12 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         Ctrl.setChanged();
         return Ctrl.networkId;
     }
-    public boolean isItemExcluded(Item item){
-        return this.excludedTracks.contains(item);
-    }
-    public List<Item> getCustomQueue() {
+    public List<DiscIdentity> getCustomQueue() {
         return this.customQueueOrder;
+    }
+    public boolean isExcluded(ItemStack stack)
+    {
+        return excludedTracks.contains(DiscIdentityHelper.get(stack));
     }
     public long getSongStartTick() {
         return this.songStartTick;
@@ -349,32 +365,38 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     }
     //#endregion
     //#region Playlist Quickies
-    public void toggleAutoplay() 
-    {
+    public void toggleAutoplay() {
         this.autoplayEnabled = !this.autoplayEnabled;
         this.setChanged();
         if (level != null && !level.isClientSide) {
             level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
         }
     }
-    public void toggleExclusion(Item item) {
-        if (excludedTracks.contains(item)) {
-            excludedTracks.remove(item);
-        } else {
-            excludedTracks.add(item);
+    public void toggleExclusion(ItemStack item) {
+        DiscIdentity id = DiscIdentityHelper.get(item);
+        if (excludedTracks.contains(id)){
+            excludedTracks.remove(id);
+        }
+        else{
+            excludedTracks.add(id);
         }
     }
-    public void moveInQueue(Item item, int direction) {
-        int index = customQueueOrder.indexOf(item);
-        if (index == -1) {
-            customQueueOrder.add(item);
+    
+    public void moveInQueue(ItemStack item, int direction) {
+        DiscIdentity id = DiscIdentityHelper.get(item);
+        int index = customQueueOrder.indexOf(id);
+        if(index == -1)
+        {
+            customQueueOrder.add(id);
             index = customQueueOrder.size() - 1;
         }
         int newIndex = index + direction;
-        // Prevent moving out of bounds (above top or below bottom)
-        if (newIndex >= 0 && newIndex < customQueueOrder.size()) {
-            Collections.swap(customQueueOrder, index, newIndex);
-            this.setChanged();
+        if(newIndex < 0 || newIndex >= customQueueOrder.size()){ return;}
+        Collections.swap(customQueueOrder,index,newIndex);
+        this.setChanged();
+        if(level != null && !level.isClientSide)
+        {
+            level.sendBlockUpdated(worldPosition,getBlockState(),getBlockState(),3);
             PlaylistHelper.broadcastPlaylistUpdate(this);
         }
     }
@@ -476,7 +498,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             attempts++;
 
             ItemStack nextStack = fullPlaylist.get(nextIndex).stack();
-            if (!excludedTracks.contains(nextStack.getItem())) {
+            if (!isExcluded(nextStack))
+            {
                 tryPlayDisc(nextIndex);
                 return;
             }

@@ -7,11 +7,8 @@ import com.azulc.ongakumod.util.PlaylistHelper;
 import com.azulc.ongakumod.util.TerminalControlHandler;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Level;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
@@ -21,12 +18,11 @@ public class ServerPayloadHandler {
             Level level = context.player().level();
             BlockPos pos = payload.pos().orElseThrow(() -> new IllegalArgumentException("PLAY requires a slot index"));
             if (level.getBlockEntity(pos) instanceof AutoplayControllerBlockEntity controller) {
-                Item item = BuiltInRegistries.ITEM.get(ResourceLocation.parse(payload.itemRegistryName()));
                 switch (payload.action()) {
                     case TOGGLE_AUTOPLAY -> controller.toggleAutoplay();
-                    case EXCLUDE -> controller.toggleExclusion(item);
-                    case MOVE_UP -> controller.moveInQueue(item, -1);
-                    case MOVE_DOWN -> controller.moveInQueue(item, 1);
+                    case EXCLUDE -> controller.toggleExclusion(payload.itemRegistryName().get());
+                    case MOVE_UP -> controller.moveInQueue(payload.itemRegistryName().get(), -1);
+                    case MOVE_DOWN -> controller.moveInQueue(payload.itemRegistryName().get(), 1);
                     case SKIP -> controller.playNextInQueue();
                     case STOP -> controller.StopJukebox();
                     case PLAY -> {    
