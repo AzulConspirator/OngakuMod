@@ -125,7 +125,7 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
                 tag.putUUID("controller_id", terminal.getNetworkId());
                 dropStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                    TerminalControlHandler.dispatchAudio(player, terminal.getNetworkId(), Optional.empty(), true, true,Optional.of(pos), null);
+                    TerminalControlHandler.dispatchAudio(player, terminal.getNetworkId(), Optional.empty(), true, true,Optional.of(pos));
                 }
                 Block.popResource(level, pos, dropStack);
             }
@@ -157,12 +157,12 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
             if (be instanceof TerminalBlockEntity terminal) 
             {
                 UUID controllerId = terminal.getNetworkId();
-                GlobalPos GlobePos = ControllerRegistry.get((ServerLevel)level).get(controllerId);
                 if (controllerId != null && pos != null) 
                 {
-                    if(!LinkHelper.ControllerExist(controllerId, level, GlobePos) && level.isLoaded(GlobePos.pos()))
+                    GlobalPos GlobePos = ControllerRegistry.get((ServerLevel)level).get(controllerId);
+                    if(!LinkHelper.ControllerExist(controllerId, level, GlobePos))
                     {
-                        player.displayClientMessage(Component.literal("Controller Missing, Terminal unlinked!"), true);
+                        player.displayClientMessage(Component.literal("Controller Missing, unlinking Terminal"), true);
                         ControllerRegistry.get((ServerLevel)level).unregister(controllerId);
                         terminal.ClearNetworkId();
                         return  InteractionResult.FAIL;
@@ -188,7 +188,7 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
                     });
                     return InteractionResult.SUCCESS;
                 }
-                player.displayClientMessage(Component.literal("Terminal unlinked!"), true);
+                player.displayClientMessage(Component.literal("Terminal Not linked!"), true);
                 return InteractionResult.FAIL;
             }
         }

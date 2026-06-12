@@ -187,6 +187,7 @@ public class LinkHelper {
     //#endregion
     public static boolean ControllerExist(UUID UUIDgiven, Level level,GlobalPos BE)
     {
+        if (UUIDgiven == null || level ==null || BE ==null) {return false;}
         if (level.isLoaded(BE.pos()))
         {
             BlockEntity ctrl = level.getBlockEntity(BE.pos());

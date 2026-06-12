@@ -23,7 +23,7 @@ public class TerminalStateEvents {
             if (thrownItem.getItem() instanceof TerminalBlockItem terminal) 
             {    
                 for (ServerPlayer _player : event.getPlayer().level().getServer().getPlayerList().getPlayers()) {//
-                    TerminalControlHandler.dispatchAudio(_player, terminal.getNetworkId(thrownItem), Optional.empty(), true, false,Optional.empty(), null);
+                    TerminalControlHandler.dispatchAudio(_player, terminal.getNetworkId(thrownItem), Optional.empty(), true, false,Optional.empty());
                 }
             }
         }

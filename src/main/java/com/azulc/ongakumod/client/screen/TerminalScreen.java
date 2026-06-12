@@ -26,6 +26,7 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
 {    
     public static final ResourceLocation BUTTON_ICONS = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/gui/controller.png");
     ControllerSnapshot snapshot;
+    private long lastActionTime = 0;
 
     public TerminalScreen(TerminalMenu menu, Inventory inv, Component title) 
     {
@@ -62,6 +63,9 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
     }
     private void sendAction(int action, int index, boolean isBlockMode)
     {
+        long now = net.minecraft.Util.getMillis();
+        if (now - this.lastActionTime < 250) return;
+        this.lastActionTime = now;
         this.snapshot = this.menu.getSnapshot();
         BlockPos targetPos = this.snapshot != null ? this.snapshot.pos() : BlockPos.ZERO;
         Optional<BlockPos> blockPosOpt = Optional.ofNullable(this.menu.getTerminalBlockPos()).flatMap(opt -> opt);

@@ -1,12 +1,12 @@
 package com.azulc.ongakumod.client.screen.widget;
 
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
+import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
 
@@ -25,7 +25,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEntry>
 {
     private final AutoplayScreen screen;
-
+    private long lastClickTime = 0;
     public record CollapsedMusicEntry(ItemStack stack, int count, int originalIndex, DiscIdentity identity) {}
 
     public MusicListWidget(AutoplayScreen screen, int width, int height, int top, int itemHeight)
@@ -34,45 +34,67 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         this.screen = screen;
     }
 
+    public boolean checkAndUseCooldown() {
+        long now = net.minecraft.Util.getMillis();
+        if (now - this.lastClickTime > 250) { // 250ms cooldown
+            this.lastClickTime = now;
+            return true;
+        }
+        return false;
+    }
+
     @Override
     protected void renderSelection(GuiGraphics graphics, int top, int width, int height, int outerColor, int innerColor) {
         // Suppress vanilla outline.
     }
 
-    public void refreshList(List<ItemStack> discs)
-    {
-        MusicEntry lastSelected = this.getSelected();
-        DiscIdentity savedIdentity = (lastSelected != null) ? lastSelected.identity : null;
+    public void refreshList(List<ItemStack> discs) {
+    MusicEntry lastSelected = this.getSelected();
+    // Track the absolute original index of the selected row, not just its object reference
+    int savedOriginalIndex = (lastSelected != null) ? lastSelected.index : -1;
+    
+    this.clearEntries();
 
-        this.clearEntries();
+    List<MusicEntry> finalEntries = new java.util.ArrayList<>();
+    Map<DiscIdentity, CollapsedMusicEntry> bundledVanilla = new java.util.LinkedHashMap<>();
 
-        Map<DiscIdentity, CollapsedMusicEntry> groupedDiscs = new LinkedHashMap<>();
+    for (int i = 0; i < discs.size(); i++) {
+        ItemStack stack = discs.get(i);
+        if (stack.isEmpty()) continue;
 
-        for (int i = 0; i < discs.size(); i++)
-        {
-            ItemStack stack = discs.get(i);
-            if (stack.isEmpty()) continue;
+        // Obtain your new identity object
+        DiscIdentity identity = DiscIdentityHelper.get(stack); 
+        boolean isEtchedMusic = LinkHelper.hasComponentByString(stack, "etched:music");
 
-            DiscIdentity identity = DiscIdentityHelper.get(stack);
-
-            CollapsedMusicEntry existing = groupedDiscs.get(identity);
-            if (existing != null)
-            {
-                groupedDiscs.put(identity, new CollapsedMusicEntry(stack,existing.count() + 1, existing.originalIndex(),identity));
+        if (isEtchedMusic) {
+            // Etched discs bypass bundling entirely; keep their true absolute list index
+            finalEntries.add(new MusicEntry(stack, i, 1,identity));
+        } else {
+            // Standard records compile into groups based on identity
+            if (bundledVanilla.containsKey(identity)) {
+                CollapsedMusicEntry existing = bundledVanilla.get(identity);
+                bundledVanilla.put(identity, new CollapsedMusicEntry(stack, existing.count() + 1, existing.originalIndex(),identity));
+            } else {
+                bundledVanilla.put(identity, new CollapsedMusicEntry(stack, 1, i,identity));
             }
-            else
-            {
-                groupedDiscs.put(identity,new CollapsedMusicEntry(stack, 1, i, identity));
-            }
-        }
-
-        for (CollapsedMusicEntry collapsed : groupedDiscs.values())
-        {
-            MusicEntry newEntry = new MusicEntry(collapsed.stack(),collapsed.originalIndex(),collapsed.count(),collapsed.identity());
-            this.addEntry(newEntry);
-            if (savedIdentity != null && savedIdentity.equals(collapsed.identity())) { this.setSelected(newEntry); }
         }
     }
+
+    // Append standard compiled groups
+    for (CollapsedMusicEntry bundled : bundledVanilla.values()) {
+        finalEntries.add(new MusicEntry(bundled.stack(), bundled.originalIndex(), bundled.count(),bundled.identity()));
+    }
+
+    // Populate the widget and re-evaluate selection state cleanly
+    for (MusicEntry entry : finalEntries) {
+        this.addEntry(entry);
+        
+        // Exact position matching prevents duplicate identity snapping
+        if (entry.index == savedOriginalIndex) {
+            this.setSelected(entry);
+        }
+    }
+}
 
     @Override
     public int getRowWidth() {
@@ -97,15 +119,6 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
     public static List<Component> getDiscDescription(ItemStack stack, ClientLevel level, LocalPlayer player, TooltipFlag tooltip)
     {
         return stack.getTooltipLines(Item.TooltipContext.of(level), player, tooltip);
-    }
-
-    private static String encodeIdentity(DiscIdentity identity)
-    {
-        if (identity.variant() == null || identity.variant().isBlank())
-        {
-            return identity.itemId().toString();
-        }
-        return identity.itemId().toString() + "|" + identity.variant();
     }
 
     public class MusicEntry extends ObjectSelectionList.Entry<MusicEntry>
@@ -136,18 +149,16 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int mainColor = isExcluded ? 0xFF666666 : 0xFFFFFFFF;
             int subColor = isExcluded ? 0xFF444444 : 0xFFAAAAAA;
 
-            int currentPlayingVisualIndex = screen.getMenu().getData().get(1);
-            boolean isNowPlaying = false;
 
-            if (currentPlayingVisualIndex >= 0 && currentPlayingVisualIndex < MusicListWidget.this.children().size())
-            {
-                MusicEntry playingEntry = MusicListWidget.this.children().get(currentPlayingVisualIndex);
-                if (this.identity.equals(playingEntry.identity))
-                {
-                    isNowPlaying = true;
-                }
+            int playingIndexFromServer = screen.getMenu().getData().get(1); 
+            int jukeboxStatus = screen.getMenu().getData().get(2); // 1 = playing, 0 = idle
+
+            boolean isNowPlaying = false;
+            if (jukeboxStatus == 1 && playingIndexFromServer == this.index) {
+                isNowPlaying = true;
             }
 
+            // 2. Render visual highlights
             if (isNowPlaying) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x4455FF55);
                 graphics.fill(x, y, x + 2, bgBottom, 0xFF55FF55);
@@ -157,7 +168,6 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             } else if (isHovered) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x22FFFFFF);
             }
-
             if (isExcluded) {
                 graphics.setColor(0.3f, 0.3f, 0.3f, 1.0f);
             }
@@ -220,29 +230,27 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         {
             int listIndex = MusicListWidget.this.children().indexOf(this);
             if (listIndex == -1) return false;
-
             int rowTop = MusicListWidget.this.getRowTop(listIndex);
             int rowLeft = MusicListWidget.this.getRowLeft();
             int rightEdge = MusicListWidget.this.getRowLeft() + MusicListWidget.this.getRowWidth() - 10;
 
             if (mouseY < rowTop || mouseY > rowTop + MusicListWidget.this.itemHeight) return false;
 
-            String identityKey = encodeIdentity(this.identity);
             BlockPos pos = screen.getMenu().getBlockPos();
 
             if (mouseX >= rightEdge - 12 && mouseX <= rightEdge)
             {
-                sendAction(pos, identityKey, ManagePlaylistPayload.Action.EXCLUDE);
+                if (MusicListWidget.this.checkAndUseCooldown())sendAction(pos, ManagePlaylistPayload.Action.EXCLUDE);
                 return true;
             }
             else if (mouseX >= rightEdge - 27 && mouseX <= rightEdge - 15)
             {
-                sendAction(pos, identityKey, ManagePlaylistPayload.Action.MOVE_DOWN);
+                if (MusicListWidget.this.checkAndUseCooldown())sendAction(pos, ManagePlaylistPayload.Action.MOVE_DOWN);
                 return true;
             }
             else if (mouseX >= rightEdge - 42 && mouseX <= rightEdge - 30)
             {
-                sendAction(pos, identityKey, ManagePlaylistPayload.Action.MOVE_UP);
+                if (MusicListWidget.this.checkAndUseCooldown())sendAction(pos, ManagePlaylistPayload.Action.MOVE_UP);
                 return true;
             }
 
@@ -252,7 +260,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
                 int jukeStatus = screen.getMenu().getData().get(2);
                 if (jukeStatus == 1)
                 {
-                    screen.setSelectedDisc(this.index);
+                    if (MusicListWidget.this.checkAndUseCooldown()) screen.setSelectedDisc(this.index);
                 }
                 return true;
             }
@@ -260,8 +268,9 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             return false;
         }
 
-        private void sendAction(BlockPos pos, String name, ManagePlaylistPayload.Action action) {
-             PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(pos),Optional.empty() , Optional.empty(), action, Optional.empty()));
+
+        private void sendAction(BlockPos pos, ManagePlaylistPayload.Action action) {
+             PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(pos),Optional.empty() ,Optional.of(this.disc), action, Optional.empty()));
         }
 
         @Override
@@ -270,4 +279,4 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             return disc.getHoverName();
         }
     }
-}      
+}  

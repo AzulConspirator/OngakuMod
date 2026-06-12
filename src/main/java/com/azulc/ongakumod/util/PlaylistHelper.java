@@ -39,10 +39,8 @@ public class PlaylistHelper
         Level lvl = controller.getLevel();
         List<PlaylistEntry> playlist = new ArrayList<>();
         if (lvl == null) return playlist;
-
         Set<BlockPos> linkedRackPositions = controller.getLinkedRackPositions();
         List<DiscIdentity> customQueueOrder = controller.getCustomQueue();
-
         // Keep insertion order stable so newly discovered discs append predictably.
         Set<DiscIdentity> physicalItemTypes = new LinkedHashSet<>();
 
@@ -63,7 +61,6 @@ public class PlaylistHelper
                 }
             }
         }
-
         // 2. Add the disc currently in the jukebox, if any
         if (controller.currentlyPlayingEntry != null)
         {
@@ -83,15 +80,9 @@ public class PlaylistHelper
                 }
             }
         }
-
         // 3. Keep queue order synced to what is physically present
         boolean changed = false;
-
-        if (customQueueOrder.removeIf(identity -> !physicalItemTypes.contains(identity)))
-        {
-            changed = true;
-        }
-
+        if (customQueueOrder.removeIf(identity -> !physicalItemTypes.contains(identity))) {changed = true; }
         for (DiscIdentity identity : physicalItemTypes)
         {
             if (!customQueueOrder.contains(identity))
@@ -100,12 +91,7 @@ public class PlaylistHelper
                 changed = true;
             }
         }
-
-        if (changed)
-        {
-            controller.setChanged();
-        }
-
+        if (changed) { controller.setChanged();}
         // 4. Sort by custom queue order first, then by rack position and slot
         playlist.sort((a, b) ->
         {
@@ -127,13 +113,10 @@ public class PlaylistHelper
             {
                 return aQueued ? -1 : 1;
             }
-
             int rackCompare = a.rackPos().compareTo(b.rackPos());
             if (rackCompare != 0) return rackCompare;
-
             return Integer.compare(a.slotIndex(), b.slotIndex());
         });
-
         return playlist;
     }
 
@@ -167,7 +150,6 @@ public class PlaylistHelper
         public static DiscIdentity get(ItemStack stack)
         {
             ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
-
             // Etched discs become unique by URL, not just by item type
             if (LinkHelper.hasComponentByString(stack, "etched:music"))
             {
@@ -191,17 +173,8 @@ public class PlaylistHelper
     {
         Level lvl = controller.getLevel();
         if (lvl == null || lvl.isClientSide) return;
-
         List<ItemStack> sortedStacks = new ArrayList<>();
-        for (PlaylistEntry entry : buildPlaylist(controller))
-        {
-            sortedStacks.add(entry.stack());
-        }
-
-        PacketDistributor.sendToPlayersTrackingChunk(
-            (ServerLevel) lvl,
-            new ChunkPos(controller.getBlockPos()),
-            new SyncPlaylistPayload(sortedStacks)
-        );
+        for (PlaylistEntry entry : buildPlaylist(controller)) { sortedStacks.add(entry.stack()); }
+        PacketDistributor.sendToPlayersTrackingChunk((ServerLevel) lvl,new ChunkPos(controller.getBlockPos()),new SyncPlaylistPayload(sortedStacks));
     }
 }

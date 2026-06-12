@@ -1,6 +1,7 @@
 package com.azulc.ongakumod.blockentity;
 
 import net.minecraft.core.HolderLookup;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.Holder;
@@ -346,6 +347,11 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     {
         return excludedTracks.contains(DiscIdentityHelper.get(stack));
     }
+    @SuppressWarnings("unused")
+    private int getCustomOrder(ItemStack stack) // atm going unused
+    {
+        return customQueueOrder.indexOf(DiscIdentityHelper.get(stack));
+    }
     public long getSongStartTick() {
         return this.songStartTick;
     }
@@ -381,7 +387,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             excludedTracks.add(id);
         }
     }
-    
+    // used for moving playlist entry in queue, mainly for autoplay purposes
     public void moveInQueue(ItemStack item, int direction) {
         DiscIdentity id = DiscIdentityHelper.get(item);
         int index = customQueueOrder.indexOf(id);
@@ -441,12 +447,17 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             this.songDurationTicks = songHolder.value().lengthInTicks();
             if (this.songDurationTicks <= 0) 
             {
-                // Fallback to a standard 3-minute track length (3600 ticks) 
-                // so the autoplay function doesn't get trapped in a 1-tick skip loop.
-                this.songDurationTicks = 3600; 
+                // Fallback to a standard 6-minute track length
+                this.songDurationTicks = 6000; 
             }
             jukebox.getSongPlayer().play(level, songHolder);
-        } else {
+        } 
+        else if (BuiltInRegistries.ITEM.getKey(discCopy.getItem()).getNamespace() != "minecraft")
+        {
+            // Fallback to a standard 6-minute track length
+            this.songDurationTicks = 6000; 
+        }
+        else {
             this.songDurationTicks = 0;
         }
         this.songStartTick = level.getGameTime();

@@ -13,13 +13,10 @@ import net.minecraft.world.item.ItemStack;
 
 public record SyncPlaylistPayload(List<ItemStack> discs) implements CustomPacketPayload {
     public static final Type<SyncPlaylistPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "sync_playlist"));
-
-    // 1.21.1 standard for encoding a list of ItemStacks
     public static final StreamCodec<RegistryFriendlyByteBuf, SyncPlaylistPayload> STREAM_CODEC = StreamCodec.composite(
             ByteBufCodecs.collection(ArrayList::new, ItemStack.OPTIONAL_STREAM_CODEC), SyncPlaylistPayload::discs,
             SyncPlaylistPayload::new
     );
-
     @Override
     public Type<? extends CustomPacketPayload> type() {
         return TYPE;

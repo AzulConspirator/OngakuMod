@@ -48,7 +48,12 @@ public class TerminalSoundHandler
     }
 
     // --- MODE 1: BLOCK MODE (Static Position Attenuation) ---
-    public static void playBlockModeSound(UUID controllerId, SoundEvent soundEvent,Optional<ItemStack> Disc, BlockPos pos) {
+    public static void playBlockModeSound(UUID controllerId, Optional<ItemStack> Disc, BlockPos pos) {
+        ItemStack disc = Disc.orElse(ItemStack.EMPTY);
+        SoundEvent soundEvent = null;
+        if (!disc.isEmpty()) {
+            soundEvent = LinkHelper.getSoundFromDiscId(Minecraft.getInstance().level, disc);
+        }
         if (OngakuMod.IS_ETCHED_LOADED && Disc.isPresent()) {
             ItemStack stack = Disc.get();
             if (EtchedBridge.hasEtchedMusic(stack)) {
@@ -62,7 +67,7 @@ public class TerminalSoundHandler
     }
 
     // --- MODE 2: ITEM MODE / MP3 MODE (Entity-Bound Attenuation) ---
-    public static void playItemModeSound(UUID controllerId, SoundEvent soundEvent, Optional<ItemStack> Disc, int entityId) {
+    public static void playItemModeSound(UUID controllerId, Optional<ItemStack> Disc, int entityId) {
         ClientLevel level = Minecraft.getInstance().level;
         if (level == null) return;
 
@@ -71,7 +76,11 @@ public class TerminalSoundHandler
             stopSound(controllerId);
             return;
         }
-
+        ItemStack disc = Disc.orElse(ItemStack.EMPTY);
+        SoundEvent soundEvent = null;
+        if (!disc.isEmpty()) {
+            soundEvent = LinkHelper.getSoundFromDiscId(Minecraft.getInstance().level, disc);
+        }
         if (OngakuMod.IS_ETCHED_LOADED && Disc.isPresent()) {
             ItemStack stack = Disc.get();
             if (EtchedBridge.hasEtchedMusic(stack)) {

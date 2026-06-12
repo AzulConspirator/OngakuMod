@@ -7,7 +7,6 @@ import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
@@ -60,15 +59,14 @@ public class TerminalControlHandler {
         {
             case ACTION_STOP -> {
                 controller.StopJukebox();
-                dispatchAudio(player, networkId,Optional.empty(),  true, isBlockMode, terminalBlockPos, null);
+                dispatchAudio(player, networkId,Optional.empty(),  true, isBlockMode, terminalBlockPos);
             }
             case ACTION_PLAY_TRACK -> {
                 controller.playNextInQueue();
                 if (controller.currentlyPlayingEntry != null) {
                     ItemStack stack = controller.currentlyPlayingEntry.stack();
-                    SoundEvent sound = LinkHelper.getSoundFromDiscId(level, stack);
-                    if (sound != null || LinkHelper.hasComponentByString(stack, "etched:music")) {
-                        dispatchAudio(player, networkId, Optional.of(stack), false, isBlockMode, terminalBlockPos, sound);
+                    if (stack != null || LinkHelper.hasComponentByString(stack, "etched:music")) {
+                        dispatchAudio(player, networkId, Optional.of(stack), false, isBlockMode, terminalBlockPos);
                     }
                 }
             }
@@ -104,7 +102,7 @@ public class TerminalControlHandler {
             {
                 apEnabled = false;
                 startTick = -1;
-                dispatchAudio(player, controllerUuid,Optional.of(currentDisc), true, isBlockMode, terminalBlockPos, null);
+                dispatchAudio(player, controllerUuid,Optional.of(currentDisc), true, isBlockMode, terminalBlockPos);
             }
             case ACTION_PLAY_TRACK -> 
             {
@@ -116,12 +114,8 @@ public class TerminalControlHandler {
                 
                 currentDisc = playlist.get(trackIndex);
                 startTick = level.getGameTime();
-                if (currentDisc != null) {
-                    ItemStack stack = currentDisc;
-                    SoundEvent sound = LinkHelper.getSoundFromDiscId(level, stack);
-                    if (sound != null || LinkHelper.hasComponentByString(stack, "etched:music")) {
-                        dispatchAudio(player, controllerUuid, Optional.of(stack), false, isBlockMode, terminalBlockPos, sound);
-                    }
+                if (currentDisc != null || LinkHelper.hasComponentByString(currentDisc, "etched:music")) {
+                    dispatchAudio(player, controllerUuid, Optional.of(currentDisc), false, isBlockMode, terminalBlockPos);
                 }
             }
             case ACTION_TOGGLE_AP -> apEnabled = !apEnabled;
@@ -131,9 +125,9 @@ public class TerminalControlHandler {
         registry.updateSnapshot(controllerUuid, updatedSnapshot);
     }
 
-    public static void dispatchAudio(ServerPlayer player, UUID controllerId,Optional<ItemStack> Disc, boolean isStop, boolean isBlockMode, Optional<BlockPos> terminalPos, SoundEvent sound) 
+    public static void dispatchAudio(ServerPlayer player, UUID controllerId,Optional<ItemStack> Disc, boolean isStop, boolean isBlockMode, Optional<BlockPos> terminalPos) 
     {
-        TerminalAudioPayload packet = new TerminalAudioPayload(controllerId,Disc, isStop, isBlockMode, terminalPos,Optional.ofNullable(player.getId()),Optional.ofNullable(sound));
+        TerminalAudioPayload packet = new TerminalAudioPayload(controllerId,Disc, isStop, isBlockMode, terminalPos,Optional.ofNullable(player.getId()));
         if (isBlockMode) 
         {
             ChunkPos chunkPos = new ChunkPos(terminalPos.get());

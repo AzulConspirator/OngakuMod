@@ -8,7 +8,6 @@ import com.azulc.ongakumod.util.TerminalSoundHandler;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.sounds.SoundEvent;
 import net.neoforged.neoforge.network.handling.IPayloadContext;
 
 public class ClientPayloadHandler 
@@ -28,15 +27,14 @@ public class ClientPayloadHandler
                 TerminalSoundHandler.stopSound(controllerId);
                 return;
             }
-            SoundEvent soundEvent = payload.soundEvent().orElse(null);
-            
+
             if (payload.isBlockMode()) {
                 payload.blockPos().ifPresent(pos -> 
-                    TerminalSoundHandler.playBlockModeSound(controllerId, soundEvent, payload.Disc(), pos)
+                    TerminalSoundHandler.playBlockModeSound(controllerId, payload.Disc(), pos)
                 );
             } else {
                 int playerEntityId = Minecraft.getInstance().player.getId();
-                TerminalSoundHandler.playItemModeSound(controllerId, soundEvent, payload.Disc(), playerEntityId);
+                TerminalSoundHandler.playItemModeSound(controllerId, payload.Disc(), playerEntityId);
             }
         });
     }
