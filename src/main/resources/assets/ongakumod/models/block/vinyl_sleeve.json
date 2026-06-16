@@ -3,8 +3,8 @@
 	"credit": "Made with Blockbench",
 	"texture_size": [64, 64],
 	"textures": {
-		"11": "ongakumod:vvs_decor_custom/music_disc_ward_cover",
-		"particle": "ongakumod:vvs_decor_custom/music_disc_cat_cover"
+		"11": "ongakumod:block/vinyl_sleeve",
+		"particle": "ongakumod:block/vinyl_sleeve"
 	},
 	"elements": [
 		{
