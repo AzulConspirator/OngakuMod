@@ -1,9 +1,7 @@
 package com.azulc.ongakumod;
 
 import java.util.List;
-
 import org.slf4j.Logger;
-
 import com.azulc.ongakumod.block.AutoplayControllerBlock;
 import com.azulc.ongakumod.block.DiscRackBlock;
 import com.azulc.ongakumod.block.DiscRackBoxBlock;
@@ -27,12 +25,15 @@ import com.azulc.ongakumod.network.TerminalActionPayload;
 import com.azulc.ongakumod.network.TerminalAudioPayload;
 import com.azulc.ongakumod.network.TerminalUpdatePayload;
 import com.mojang.logging.LogUtils;
-
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponentType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.server.packs.repository.Pack;
+import net.minecraft.server.packs.repository.PackSource;
 import net.minecraft.world.flag.FeatureFlagSet;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.BlockItem;
@@ -50,6 +51,7 @@ import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.neoforge.common.NeoForge;
 import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.neoforged.neoforge.event.AddPackFindersEvent;
 import net.neoforged.neoforge.event.server.ServerStartingEvent;
 import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
 import net.neoforged.neoforge.network.registration.PayloadRegistrar;
@@ -128,6 +130,7 @@ public class OngakuMod
     public OngakuMod(IEventBus modEventBus, ModContainer modContainer) 
     {
         //modEventBus.addListener(this::commonSetup);
+        modEventBus.addListener(this::onAddPackFinders);
         BLOCKS.register(modEventBus);
         ITEMS.register(modEventBus);
         MENUS.register(modEventBus);
@@ -143,6 +146,21 @@ public class OngakuMod
     public void onServerStarting(ServerStartingEvent event) {
         // Do something when the server starts
         //LOGGER.info("HELLO from server starting");
+    }
+
+    public void onAddPackFinders(AddPackFindersEvent event) {
+        if (event.getPackType() != PackType.CLIENT_RESOURCES) {
+            return;
+        }
+
+        event.addPackFinders(
+                ResourceLocation.fromNamespaceAndPath(MODID, "resourcepacks/ssvd_azul"),
+                PackType.CLIENT_RESOURCES,
+                Component.literal("SS Vinyl Decor - Azul Edition"),
+                PackSource.BUILT_IN,
+                false,
+                Pack.Position.TOP
+        );
     }
     
     public void registerNetworking(RegisterPayloadHandlersEvent event) {
