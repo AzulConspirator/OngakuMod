@@ -365,7 +365,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         return linkedSpeakers;
     }
     public void StopJukebox() {
-        if (level == null || level.isClientSide) return;
+        if (this.level == null || this.level.isClientSide) return;
         this.autoplayEnabled = false;
         this.stopAndReturnDisc();
     }
@@ -450,7 +450,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                 // Fallback to a standard 6-minute track length
                 this.songDurationTicks = 6000; 
             }
-            jukebox.getSongPlayer().play(level, songHolder);
+            //jukebox.getSongPlayer().play(level, songHolder);
         } 
         else if (BuiltInRegistries.ITEM.getKey(discCopy.getItem()).getNamespace() != "minecraft")
         {

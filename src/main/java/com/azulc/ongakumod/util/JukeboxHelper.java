@@ -13,6 +13,7 @@ import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.JukeboxBlock;
 import net.minecraft.world.level.block.entity.JukeboxBlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.level.gameevent.GameEvent;
 
 public class JukeboxHelper 
 {
@@ -68,21 +69,28 @@ public class JukeboxHelper
             return -1;
         }
     }
-    public static void clearJukebox(AutoplayControllerBlockEntity Controller,JukeboxBlockEntity jukebox, BlockPos pos) 
+    
+    public static void clearJukebox(AutoplayControllerBlockEntity Controller, JukeboxBlockEntity jukebox, BlockPos pos) 
     {
+        System.out.println(
+            "STOP JUKEBOX " + pos +
+            " playing=" +
+            jukebox.getSongPlayer().isPlaying()
+        );
         Level level = Controller.getLevel();
+        BlockState state = level.getBlockState(pos);
+        level.levelEvent(1011, pos, 0); 
+        //jukebox.getSongPlayer().stop(level, state);
         ItemStack existing = jukebox.getTheItem();
         if (!existing.isEmpty()) {
-            returnDiscToRack(Controller,existing);
-            jukebox.setTheItem(ItemStack.EMPTY);
+            returnDiscToRack(Controller, existing);
         }
-        
-        BlockState state = level.getBlockState(pos);
-        BlockState oldState = state;
+        jukebox.setTheItem(ItemStack.EMPTY);
         BlockState newState = state.setValue(JukeboxBlock.HAS_RECORD, false);
-        level.setBlock(pos, newState, 3);
-        level.sendBlockUpdated(pos,oldState,newState,3);
-        jukebox.getSongPlayer().stop(level, state);
+        level.setBlock(pos,newState,3);
+
+        level.gameEvent(GameEvent.BLOCK_CHANGE,pos,GameEvent.Context.of(newState));
+        level.sendBlockUpdated(pos,state,newState,3);
         Controller.currentPlaylistIndex = -1;
     }
 
