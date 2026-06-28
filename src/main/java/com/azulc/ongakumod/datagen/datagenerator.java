@@ -30,6 +30,7 @@ public class datagenerator {
         //data providers
         generator.addProvider(event.includeServer(),new LootTableProvider(output, Collections.emptySet(),List.of(new LootTableProvider.SubProviderEntry(blockloottableprovider::new, LootContextParamSets.BLOCK)), lookupProvider));
         generator.addProvider(event.includeServer(), new ongakumod_recipeprovider(output, lookupProvider));
+        generator.addProvider(event.includeServer(), new ongakumod_blocktagsprovider(output, lookupProvider, existingFileHelper));
         //asset providers
         //generator.addProvider(event.includeClient(), new blockstateprovider(output, existingFileHelper));
         //generator.addProvider(event.includeClient(), new Itemmodelprovider(output, existingFileHelper));
