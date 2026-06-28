@@ -78,7 +78,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                 case 1 -> GetCurrentPlayingIndex();
                 case 2 -> JukeboxHelper.CheckJukeStatus(AutoplayControllerBlockEntity.this.level,JukeboxHelper.findJukebox(AutoplayControllerBlockEntity.this));
                 case 3 -> autoplayEnabled ? 1 : 0;
-                case 4 -> (level != null && songStartTick != -1 && cachedStatus == 1) ? (int)(level.getGameTime() - songStartTick) : 0;
+                case 4 -> (int)(level.getGameTime() - songStartTick);
                 case 5 -> songDurationTicks;
                 default -> 0;
             };
