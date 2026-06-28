@@ -50,7 +50,7 @@ public class TerminalBlockItem extends BlockItem {
     
     public static void ClearNetworkId(ItemStack stack) {
         CompoundTag tag = new CompoundTag();
-        tag.putUUID("controller_id", null);
+        tag.remove("controller_id");
         stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
     }
 
@@ -88,6 +88,10 @@ public class TerminalBlockItem extends BlockItem {
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) 
         {
             UUID controllerId = getNetworkId(stack);
+            if (controllerId == null) {
+                player.displayClientMessage(Component.literal("Terminal is not linked to a controller!"), true);
+                return InteractionResultHolder.fail(stack);
+            }
             GlobalPos Pos = ControllerRegistry.get((ServerLevel)level).get(controllerId);
             if (controllerId != null && Pos != null) 
             {
@@ -111,11 +115,8 @@ public class TerminalBlockItem extends BlockItem {
                     }
                 }, buf -> 
                 {
-                    // 1. Identify flag: true = opened from item
                     buf.writeBoolean(true); 
-                    // 2. Write network link identity
                     buf.writeUUID(controllerId);
-                    // 3. Stream Snapshot Data
                     ControllerSnapshot currentSnapshot = ControllerRegistry.get((ServerLevel) serverPlayer.level()).getSnapshot(controllerId);
                     if (currentSnapshot != null) {
                         buf.writeBoolean(true);

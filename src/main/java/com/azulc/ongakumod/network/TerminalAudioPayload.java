@@ -18,17 +18,24 @@ public record TerminalAudioPayload(UUID controllerId,Optional<ItemStack> Disc, b
     public static final Type<TerminalAudioPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "terminal_audio"));
     public static final StreamCodec<RegistryFriendlyByteBuf, TerminalAudioPayload> STREAM_CODEC = StreamCodec.of(
         (buf, payload) -> { // Encoder
-            UUIDUtil.STREAM_CODEC.encode(buf, payload.controllerId);
+            buf.writeBoolean(payload.controllerId != null);
+            if (payload.controllerId != null) {
+                UUIDUtil.STREAM_CODEC.encode(buf, payload.controllerId);
+            }
             ByteBufCodecs.optional(ItemStack.STREAM_CODEC).encode(buf, payload.Disc);
             buf.writeBoolean(payload.isStopPacket);
             buf.writeBoolean(payload.isBlockMode);
             ByteBufCodecs.optional(BlockPos.STREAM_CODEC).encode(buf, payload.blockPos);
             ByteBufCodecs.optional(ByteBufCodecs.VAR_INT).encode(buf, payload.entityId);
-            //ByteBufCodecs.optional(ByteBufCodecs.registry(Registries.SOUND_EVENT)).encode(buf, payload.soundEvent);
         },
         (buf) -> { // Decoder
+            @SuppressWarnings("unused")
+            UUID controllerId = null;
+            if (buf.readBoolean()) {
+                controllerId = UUIDUtil.STREAM_CODEC.decode(buf);
+            } 
             return new TerminalAudioPayload(
-                UUIDUtil.STREAM_CODEC.decode(buf),
+                controllerId,
                 ByteBufCodecs.optional(ItemStack.STREAM_CODEC).decode(buf),
                 buf.readBoolean(),
                 buf.readBoolean(),

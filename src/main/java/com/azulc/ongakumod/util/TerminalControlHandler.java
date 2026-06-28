@@ -127,6 +127,9 @@ public class TerminalControlHandler {
 
     public static void dispatchAudio(ServerPlayer player, UUID controllerId,Optional<ItemStack> Disc, boolean isStop, boolean isBlockMode, Optional<BlockPos> terminalPos) 
     {
+        if (controllerId == null) {
+            return;
+        }
         TerminalAudioPayload packet = new TerminalAudioPayload(controllerId,Disc, isStop, isBlockMode, terminalPos,Optional.ofNullable(player.getId()));
         if (isBlockMode) 
         {
