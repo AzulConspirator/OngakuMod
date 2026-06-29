@@ -1,10 +1,7 @@
 package com.azulc.ongakumod.util;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
@@ -25,7 +22,6 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public class PlaylistHelper
 {
     public record PlaylistEntry(BlockPos rackPos, int slotIndex, ItemStack stack) {}
-    public record DisplayPlaylistEntry(ItemStack stack, int count) {}
     public record DiscIdentity(ResourceLocation itemId, String variant)
     {
         public boolean hasVariant()
@@ -42,8 +38,7 @@ public class PlaylistHelper
         Set<BlockPos> linkedRackPositions = controller.getLinkedRackPositions();
         List<DiscIdentity> customQueueOrder = controller.getCustomQueue();
         // Keep insertion order stable so newly discovered discs append predictably.
-        Set<DiscIdentity> physicalItemTypes = new LinkedHashSet<>();
-
+        List<DiscIdentity> physicalItemTypes = new ArrayList<>();
         // 1. Scan linked racks
         for (BlockPos rackPos : linkedRackPositions)
         {
@@ -57,7 +52,11 @@ public class PlaylistHelper
                     if (stack.isEmpty()) continue;
 
                     playlist.add(new PlaylistEntry(rackPos, i, stack.copy()));
-                    physicalItemTypes.add(DiscIdentityHelper.get(stack));
+                    DiscIdentity id = DiscIdentityHelper.get(stack);
+                    if(!physicalItemTypes.contains(id))
+                    {
+                        physicalItemTypes.add(id);
+                    }
                 }
             }
         }
@@ -95,52 +94,12 @@ public class PlaylistHelper
         // 4. Sort by custom queue order first, then by rack position and slot
         playlist.sort((a, b) ->
         {
-            DiscIdentity idA = DiscIdentityHelper.get(a.stack());
-            DiscIdentity idB = DiscIdentityHelper.get(b.stack());
+            int indexA = customQueueOrder.indexOf(DiscIdentityHelper.get(a.stack()));
+            int indexB = customQueueOrder.indexOf(DiscIdentityHelper.get(b.stack()));
 
-            int indexA = customQueueOrder.indexOf(idA);
-            int indexB = customQueueOrder.indexOf(idB);
-
-            boolean aQueued = indexA != -1;
-            boolean bQueued = indexB != -1;
-
-            if (aQueued && bQueued)
-            {
-                int queueComp = Integer.compare(indexA, indexB);
-                if (queueComp != 0) return queueComp;
-            }
-            else if (aQueued != bQueued)
-            {
-                return aQueued ? -1 : 1;
-            }
-            int rackCompare = a.rackPos().compareTo(b.rackPos());
-            if (rackCompare != 0) return rackCompare;
-            return Integer.compare(a.slotIndex(), b.slotIndex());
+            return Integer.compare(indexA,indexB);
         });
         return playlist;
-    }
-
-    public static List<DisplayPlaylistEntry> buildCollapsedPlaylist(AutoplayControllerBlockEntity controller)
-    {
-        Map<DiscIdentity, DisplayPlaylistEntry> map = new LinkedHashMap<>();
-
-        for (PlaylistEntry entry : buildPlaylist(controller))
-        {
-            ItemStack stack = entry.stack();
-            DiscIdentity id = DiscIdentityHelper.get(stack);
-
-            if (map.containsKey(id))
-            {
-                DisplayPlaylistEntry existing = map.get(id);
-                map.put(id, new DisplayPlaylistEntry(existing.stack(), existing.count() + 1));
-            }
-            else
-            {
-                map.put(id, new DisplayPlaylistEntry(stack.copy(), 1));
-            }
-        }
-
-        return new ArrayList<>(map.values());
     }
 
     public static final class DiscIdentityHelper
@@ -150,7 +109,7 @@ public class PlaylistHelper
         public static DiscIdentity get(ItemStack stack)
         {
             ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            // Etched discs become unique by URL, not just by item type
+            // Etched discs become unique by URL
             if (LinkHelper.hasComponentByString(stack, "etched:music"))
             {
                 String url = EtchedBridge.getEtchedUrl(stack);

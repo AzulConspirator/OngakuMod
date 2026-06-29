@@ -30,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -43,7 +44,6 @@ import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.PlaylistHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
-import com.azulc.ongakumod.util.PlaylistHelper.DisplayPlaylistEntry;
 import com.azulc.ongakumod.util.PlaylistHelper.PlaylistEntry;
 
 public class AutoplayControllerBlockEntity extends BlockEntity 
@@ -57,8 +57,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     private boolean autoplayEnabled = false;
     public int cachedStatus = 0;
     public BlockPos JukeboxPosition;
-    private final Set<BlockPos> linkedRackPositions = new HashSet<>();
-    private final Set<BlockPos> linkedSpeakers = new HashSet<>();
+    private final Set<BlockPos> linkedRackPositions = new LinkedHashSet<>();
+    private final Set<BlockPos> linkedSpeakers = new LinkedHashSet<>();
     private final List<DiscIdentity> customQueueOrder = new ArrayList<>();
     private final Set<DiscIdentity> excludedTracks = new HashSet<>();
 
@@ -76,7 +76,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             {
                 case 0 -> linkedRackPositions.isEmpty() ? 0 : 1;
                 case 1 -> GetCurrentPlayingIndex();
-                case 2 -> JukeboxHelper.CheckJukeStatus(AutoplayControllerBlockEntity.this.level,JukeboxHelper.findJukebox(AutoplayControllerBlockEntity.this));
+                case 2 -> JukeboxHelper.CheckJukeStatus(AutoplayControllerBlockEntity.this, JukeboxHelper.findJukebox(AutoplayControllerBlockEntity.this));
                 case 3 -> autoplayEnabled ? 1 : 0;
                 case 4 -> (int)(level.getGameTime() - songStartTick);
                 case 5 -> songDurationTicks;
@@ -177,7 +177,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     public static ControllerSnapshot createSnapshot(AutoplayControllerBlockEntity ctrl)
     {
         ItemStack discId = null;
-        if(ctrl.currentlyPlayingEntry != null)
+        if(ctrl.currentlyPlayingEntry != null && ctrl.currentlyPlayingEntry.stack() != null)
         {
             discId = ctrl.currentlyPlayingEntry.stack();
         }
@@ -215,7 +215,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
 
         int newStatus = -1;
-        newStatus = JukeboxHelper.CheckJukeStatus(level,JukeboxHelper.findJukebox(this));
+        newStatus = JukeboxHelper.CheckJukeStatus(this, JukeboxHelper.findJukebox(this));
         if (newStatus != 1)
         {
             LinkHelper.broadcastToSpeakers(this,false, null);
@@ -262,6 +262,17 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             }
             exclusionTag.add(disc);
         }
+        //save currentlyplaying
+        if(currentlyPlayingEntry != null && currentlyPlayingEntry.stack() != null)
+        {
+            CompoundTag playing = new CompoundTag();
+            playing.putLong("rack",currentlyPlayingEntry.rackPos().asLong());
+            playing.putInt("slot",currentlyPlayingEntry.slotIndex());
+            CompoundTag stackTag = new CompoundTag();
+            currentlyPlayingEntry.stack().save(registries, stackTag);
+            playing.put("stack", stackTag);
+            tag.put("currentlyPlaying",playing);
+        }
         tag.putLongArray("LinkedRacks", positions);
         tag.putLongArray("linkedSpeakers", Speakerpositions);
         tag.putLong("SongStart", songStartTick);
@@ -288,12 +299,22 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         for (long posLong : _linkedSpeakers) {
             linkedSpeakers.add(BlockPos.of(posLong));
         }
-        songStartTick = tag.getLong("SongStart");
-        songDurationTicks = tag.getInt("SongDuration");
-        currentPlaylistIndex = tag.getInt("CurrentPlayingSlot");
+        this.songStartTick = tag.getLong("SongStart");
+        this.songDurationTicks = tag.getInt("SongDuration");
+        this.currentPlaylistIndex = tag.getInt("CurrentPlayingSlot");
         this.cachedStatus = tag.getInt("CachedStatus");
         this.autoplayEnabled = tag.getBoolean("autoplayEnabled");
         this.networkId = tag.getUUID("networkId");
+        if(tag.contains("currentlyPlaying"))
+        {
+            CompoundTag playing = tag.getCompound("currentlyPlaying");
+            ItemStack stack =ItemStack.parseOptional(registries,playing.getCompound("stack"));
+            currentlyPlayingEntry = new PlaylistEntry(BlockPos.of(playing.getLong("rack")),playing.getInt("slot"),stack);
+        }
+        else
+        {
+            currentlyPlayingEntry = null;
+        }
         customQueueOrder.clear();
         ListTag queueTag = tag.getList("queueOrder", 10); // 8 is the ID for StringTag
         for(int i=0;i<queueTag.size();i++)
@@ -319,11 +340,12 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
             ItemStack playing = jukebox.getTheItem();
             if (playing.isEmpty()) return -1;
-            List<DisplayPlaylistEntry> collapsedList = PlaylistHelper.buildCollapsedPlaylist(this); // search the COLLAPSED list
-            for (int i = 0; i < collapsedList.size(); i++) {
-                DisplayPlaylistEntry entry = collapsedList.get(i);
-                if (ItemStack.isSameItem(entry.stack(), playing)) {
-                    return i; // Return the index of the row in the visual list
+
+            List<PlaylistEntry> fullList = PlaylistHelper.buildPlaylist(this); // raw list - matches widget/SyncPlaylistPayload indexing
+            DiscIdentity playingIdentity = DiscIdentityHelper.get(playing);
+            for (int i = 0; i < fullList.size(); i++) {
+                if (DiscIdentityHelper.get(fullList.get(i).stack()).equals(playingIdentity)) {
+                    return i;
                 }
             }
         }
@@ -340,17 +362,22 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         Ctrl.setChanged();
         return Ctrl.networkId;
     }
+    public DiscIdentity getCurrentlyPlayingIdentity()
+    {
+        if (currentlyPlayingEntry == null || currentlyPlayingEntry.stack() == null)
+            return null;
+        return DiscIdentityHelper.get(currentlyPlayingEntry.stack());
+    }
     public List<DiscIdentity> getCustomQueue() {
         return this.customQueueOrder;
     }
     public boolean isExcluded(ItemStack stack)
     {
-        return excludedTracks.contains(DiscIdentityHelper.get(stack));
+        return this.excludedTracks.contains(DiscIdentityHelper.get(stack));
     }
-    @SuppressWarnings("unused")
-    private int getCustomOrder(ItemStack stack) // atm going unused
+    public int getCustomOrder(ItemStack stack) // atm going unused
     {
-        return customQueueOrder.indexOf(DiscIdentityHelper.get(stack));
+        return this.customQueueOrder.indexOf(DiscIdentityHelper.get(stack));
     }
     public long getSongStartTick() {
         return this.songStartTick;
@@ -441,7 +468,6 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         jukebox.setTheItem(discCopy);
         // Get Song Details
         Optional<Holder<JukeboxSong>> songHolderOpt = JukeboxSong.fromStack(level.registryAccess(), discCopy);
-
         if (songHolderOpt.isPresent()) {
             Holder<JukeboxSong> songHolder = songHolderOpt.get();
             this.songDurationTicks = songHolder.value().lengthInTicks();
@@ -450,11 +476,9 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                 // Fallback to a standard 6-minute track length
                 this.songDurationTicks = 6000; 
             }
-            //jukebox.getSongPlayer().play(level, songHolder);
         } 
         else if (BuiltInRegistries.ITEM.getKey(discCopy.getItem()).getNamespace() != "minecraft")
         {
-            // Fallback to a standard 6-minute track length
             this.songDurationTicks = 6000; 
         }
         else {

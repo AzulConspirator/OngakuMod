@@ -1,9 +1,11 @@
 package com.azulc.ongakumod.client.screen.widget;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
+import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
 import com.azulc.ongakumod.util.LinkHelper;
@@ -26,7 +28,6 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
 {
     private final AutoplayScreen screen;
     private long lastClickTime = 0;
-    public record CollapsedMusicEntry(ItemStack stack, int count, int originalIndex, DiscIdentity identity) {}
 
     public MusicListWidget(AutoplayScreen screen, int width, int height, int top, int itemHeight)
     {
@@ -48,53 +49,42 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         // Suppress vanilla outline.
     }
 
-    public void refreshList(List<ItemStack> discs) {
-    MusicEntry lastSelected = this.getSelected();
-    // Track the absolute original index of the selected row, not just its object reference
-    int savedOriginalIndex = (lastSelected != null) ? lastSelected.index : -1;
-    
-    this.clearEntries();
+    public void refreshList(List<ItemStack> discs)
+    {
+        this.clearEntries();
+        Map<Object, MusicEntry> ordered = new LinkedHashMap<>();
 
-    List<MusicEntry> finalEntries = new java.util.ArrayList<>();
-    Map<DiscIdentity, CollapsedMusicEntry> bundledVanilla = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < discs.size(); i++)
+        {
+            ItemStack stack = discs.get(i);
+            if (stack.isEmpty()) continue;
 
-    for (int i = 0; i < discs.size(); i++) {
-        ItemStack stack = discs.get(i);
-        if (stack.isEmpty()) continue;
+            DiscIdentity identity = DiscIdentityHelper.get(stack);
+            boolean isEtched = LinkHelper.hasComponentByString(stack, "etched:music");
 
-        // Obtain your new identity object
-        DiscIdentity identity = DiscIdentityHelper.get(stack); 
-        boolean isEtchedMusic = LinkHelper.hasComponentByString(stack, "etched:music");
-
-        if (isEtchedMusic) {
-            // Etched discs bypass bundling entirely; keep their true absolute list index
-            finalEntries.add(new MusicEntry(stack, i, 1,identity));
-        } else {
-            // Standard records compile into groups based on identity
-            if (bundledVanilla.containsKey(identity)) {
-                CollapsedMusicEntry existing = bundledVanilla.get(identity);
-                bundledVanilla.put(identity, new CollapsedMusicEntry(stack, existing.count() + 1, existing.originalIndex(),identity));
-            } else {
-                bundledVanilla.put(identity, new CollapsedMusicEntry(stack, 1, i,identity));
+            if (isEtched)
+            {
+                ordered.put(i, new MusicEntry(stack, i, 1, identity));
+            }
+            else
+            {
+                MusicEntry existing = ordered.get(identity);
+                if (existing != null)
+                {
+                    ordered.put(identity, new MusicEntry(existing.disc, existing.index, existing.count + 1, identity));
+                }
+                else
+                {
+                    ordered.put(identity, new MusicEntry(stack, i, 1, identity));
+                }
             }
         }
-    }
 
-    // Append standard compiled groups
-    for (CollapsedMusicEntry bundled : bundledVanilla.values()) {
-        finalEntries.add(new MusicEntry(bundled.stack(), bundled.originalIndex(), bundled.count(),bundled.identity()));
-    }
-
-    // Populate the widget and re-evaluate selection state cleanly
-    for (MusicEntry entry : finalEntries) {
-        this.addEntry(entry);
-        
-        // Exact position matching prevents duplicate identity snapping
-        if (entry.index == savedOriginalIndex) {
-            this.setSelected(entry);
+        for (MusicEntry entry : ordered.values())
+        {
+            this.addEntry(entry);
         }
     }
-}
 
     @Override
     public int getRowWidth() {
@@ -149,15 +139,13 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int mainColor = isExcluded ? 0xFF666666 : 0xFFFFFFFF;
             int subColor = isExcluded ? 0xFF444444 : 0xFFAAAAAA;
 
-
-            int playingIndexFromServer = screen.getMenu().getData().get(1); 
             int jukeboxStatus = screen.getMenu().getData().get(2); // 1 = playing, 0 = idle
-
+/*             DiscIdentity playing = screen.getMenu().getBlockEntity().getCurrentlyPlayingIdentity();
             boolean isNowPlaying = false;
-            if (jukeboxStatus == 1 && playingIndexFromServer == this.index) {
+            if (jukeboxStatus == 1 && playing != null && this.identity ==playing) {
                 isNowPlaying = true;
-            }
-
+            } */
+            boolean isNowPlaying = (jukeboxStatus == 1 && this.index == screen.getMenu().getData().get(1));
             // 2. Render visual highlights
             if (isNowPlaying) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x4455FF55);
@@ -260,6 +248,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
                 int jukeStatus = screen.getMenu().getData().get(2);
                 if (jukeStatus == 1)
                 {
+                    OngakuMod.LOGGER.info("Clicked :" + this.index+","+this.identity.toString());
                     if (MusicListWidget.this.checkAndUseCooldown()) screen.setSelectedDisc(this.index);
                 }
                 return true;

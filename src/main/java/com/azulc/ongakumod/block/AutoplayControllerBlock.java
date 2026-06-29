@@ -92,7 +92,7 @@ public class AutoplayControllerBlock extends HorizontalDirectionalBlock implemen
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof AutoplayControllerBlockEntity controller) {
-                List<ItemStack> playlistDiscs = PlaylistHelper.buildCollapsedPlaylist(controller).stream().map(entry -> entry.stack().copy()).toList();
+                List<ItemStack> playlistDiscs = PlaylistHelper.buildPlaylist(controller).stream().map(entry -> entry.stack().copy()).toList();
                 serverPlayer.openMenu(new SimpleMenuProvider((id, inv, p) ->  new AutoplayMenu(id,inv,controller,controller.data,playlistDiscs),Component.literal("Autoplay Controller") ),
                     buf -> {buf.writeBlockPos(pos);ItemStack.OPTIONAL_LIST_STREAM_CODEC.encode(buf,playlistDiscs);}
                 );
