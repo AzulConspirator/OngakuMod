@@ -526,14 +526,14 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     {
         List<PlaylistEntry> fullPlaylist = PlaylistHelper.buildPlaylist(this);
         if (fullPlaylist.isEmpty()) return;
+        int startIndex = this.currentPlaylistIndex;
         int nextIndex = this.currentPlaylistIndex;
         int attempts = 0;
         while (attempts < fullPlaylist.size()) {
             nextIndex = (nextIndex + 1) % fullPlaylist.size();
             attempts++;
-
             ItemStack nextStack = fullPlaylist.get(nextIndex).stack();
-            if (!isExcluded(nextStack))
+            if (!isExcluded(nextStack) && this.getCustomOrder(nextStack) != startIndex)
             {
                 tryPlayDisc(nextIndex);
                 return;
