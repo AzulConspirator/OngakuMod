@@ -52,12 +52,14 @@ public class JukeboxHelper
             }
         }
     }
-    public static int CheckJukeStatus(Level level,BlockPos jukeboxPos)
+    public static int CheckJukeStatus(AutoplayControllerBlockEntity controller, BlockPos jukeboxPos)
     {
+        Level level = controller.getLevel();
         if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
             if (jukebox.getBlockState().getValue(JukeboxBlock.HAS_RECORD)) 
             {
-                return jukebox.getSongPlayer().isPlaying() ? 1 : 0;
+                boolean playing = jukebox.getSongPlayer().isPlaying() || controller.currentlyPlayingEntry != null;
+                return playing ? 1 : 0;
             } 
             else 
             {
