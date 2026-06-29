@@ -45,6 +45,26 @@ public class EtchedBridge
         return null;
     }
 
+    public static int getEtchedLabelColor(ItemStack stack) 
+    {
+        var ColorData = stack.get(EtchedComponents.DISC_APPEARANCE); 
+        if (ColorData != null) {
+            int extractedColor = ColorData.labelPrimaryColor(); 
+            return extractedColor;
+        }
+        return -1;
+    }
+
+    public static int getEtchedDiscColor(ItemStack stack) 
+    {
+        var ColorData = stack.get(EtchedComponents.DISC_APPEARANCE); 
+        if (ColorData != null) {
+            int extractedColor = ColorData.discColor(); 
+            return extractedColor;
+        }
+        return -1;
+    }
+
     public static void EtchedCompatTextureSolver(ResourceManager manager) 
     {
         ResourceLocation jsonLocation = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/vvs_decor_custom/etched/etched_list.json");

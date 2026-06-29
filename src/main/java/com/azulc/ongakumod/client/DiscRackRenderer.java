@@ -2,12 +2,14 @@ package com.azulc.ongakumod.client;
 
 import java.util.List;
 
+import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.OngakuModClient;
 import com.azulc.ongakumod.block.DiscRackBoxBlock;
 import com.azulc.ongakumod.block.DiscRackWallBlock;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
+import com.azulc.ongakumod.compat.EtchedBridge;
 import com.azulc.ongakumod.util.DiscColorCache;
-
+import com.azulc.ongakumod.util.LinkHelper;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import com.mojang.math.Axis;
@@ -65,7 +67,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
                 ms.scale(scale, scale, scale);
                 ms.translate(-0.5, -0.35, -0.55);
                 //ms.mulPose(Axis.YP.rotationDegrees(180));
-                renderColoredModel(ms.last(), buffer, _Sleevemodel,true, colors, light, overlay);
+                renderColoredModel(ms.last(), buffer, _Sleevemodel,true, colors, light, overlay,stack);
                 ms.popPose();
                 ms.pushPose();
                 // load Vinyl
@@ -73,7 +75,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
                 ms.mulPose(Axis.YP.rotationDegrees(180));
                 ms.mulPose(Axis.XP.rotationDegrees(5));
                 ms.scale(scale, scale, scale);
-                renderColoredModel(ms.last(), buffer, _Vinylmodel,false, colors, light, overlay);
+                renderColoredModel(ms.last(), buffer, _Vinylmodel,false, colors, light, overlay,stack);
                 ms.popPose();
             }
         }
@@ -96,7 +98,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
                     ms.translate(-0.5, yOffset, currentZ);
                     ms.mulPose(Axis.XP.rotationDegrees(-10)); // Slight backward tilt
                     DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack);
-                    renderColoredModel(ms.last(), buffer, _Sleevemodel,true, colors, light, overlay);
+                    renderColoredModel(ms.last(), buffer, _Sleevemodel,true, colors, light, overlay,stack);
                     ms.popPose(); 
                 }
             }
@@ -118,7 +120,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
                     double currentZ = startZ + (i * spacing);
                     ms.translate(-0.5, yOffset, currentZ); 
                     DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack);
-                    renderColoredModel(ms.last(), buffer, _Vinylmodel,false, colors, light, overlay);
+                    renderColoredModel(ms.last(), buffer, _Vinylmodel,false, colors, light, overlay,stack);
                     ms.popPose(); 
                 }
             }
@@ -127,16 +129,16 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
     }
 
     @SuppressWarnings("deprecation")
-    private void renderColoredModel(PoseStack.Pose pose, MultiBufferSource buffer, BakedModel model,Boolean IsSleeve, DiscColorCache.DiscColors colors, int light, int overlay) 
+    private void renderColoredModel(PoseStack.Pose pose, MultiBufferSource buffer, BakedModel model,Boolean IsSleeve, DiscColorCache.DiscColors colors, int light, int overlay, ItemStack stack) 
     {
         for (Direction direction : Direction.values()) 
         {
-            renderQuads(pose, buffer, model.getQuads(null, direction, net.minecraft.util.RandomSource.create(42)),IsSleeve, colors, light, overlay);
+            renderQuads(pose, buffer, model.getQuads(null, direction, net.minecraft.util.RandomSource.create(42)),IsSleeve, colors, light, overlay,stack);
         }
-        renderQuads(pose, buffer, model.getQuads(null, null, net.minecraft.util.RandomSource.create(42)),IsSleeve, colors, light, overlay);
+        renderQuads(pose, buffer, model.getQuads(null, null, net.minecraft.util.RandomSource.create(42)),IsSleeve, colors, light, overlay,stack);
     }
 
-    private void renderQuads(PoseStack.Pose pose, MultiBufferSource buffer, List<BakedQuad> quads, Boolean IsSleeve, DiscColorCache.DiscColors colors, int light, int overlay) 
+    private void renderQuads(PoseStack.Pose pose, MultiBufferSource buffer, List<BakedQuad> quads, Boolean IsSleeve, DiscColorCache.DiscColors colors, int light, int overlay, ItemStack stack) 
     {
         ResourceLocation CustomTex = IsSleeve ? colors.customSleeveTex() : colors.customVinylTex();
         VertexConsumer consumer = buffer.getBuffer(RenderType.cutout());
@@ -146,13 +148,32 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
             newSprite = getAtlasSprite(CustomTex);
         }
         
+        Boolean isEtched = (OngakuMod.IS_ETCHED_LOADED) && LinkHelper.hasComponentByString(stack, "etched:music");
+
         for (BakedQuad quad : quads) 
         {
             int color;
             if (CustomTex != null) 
             {
                 color = 0xFFFFFFFF; // Don't tint if using a custom texture
-            } 
+            }
+            else if (isEtched)
+            {
+                int EtchedColor1 = (EtchedBridge.getEtchedDiscColor(stack)) != -1 ?  EtchedBridge.getEtchedDiscColor(stack) : 0xFF404040;
+                int EtchedColor2 = EtchedBridge.getEtchedLabelColor(stack)!= -1 ?  EtchedBridge.getEtchedDiscColor(stack) : 0xFFFFFFFF;
+                color = switch (quad.getTintIndex())
+                {
+                    case 1 -> EtchedColor1; // Vinyl
+                    case 2 -> EtchedColor1; // Vinyl 1
+                    case 3 -> EtchedColor2; // Center
+                    case 4 -> EtchedColor2; // Center
+                    case 5 -> EtchedColor2; // Center
+                    case 6 -> EtchedColor1; // Outline
+                    case 7 -> EtchedColor1; // Outline 1
+                    case 8 -> EtchedColor1; // Outline 2
+                    default -> EtchedColor1;
+                };
+            }
             else 
             {
                 color =  switch (quad.getTintIndex())
