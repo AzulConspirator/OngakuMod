@@ -170,9 +170,12 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
                     int barY = this.topPos + 115;
                     int barWidth = 70;
                     int barHeight = 4;
-                    
-                    graphics.fill(barX, barY, barX + barWidth, barY + barHeight, 0xFF333333);
-                    graphics.fill(barX, barY, barX + (int)(barWidth * progress), barY + barHeight, 0xFFFFFFFF);
+
+                    graphics.blit(OngakuModClient.PROGRESS_BAR, barX, barY, 0, 4, barWidth, barHeight, 48, 8);
+                    int filledWidth = (int) (barWidth * progress);
+                    if (filledWidth > 0) {
+                        graphics.blit(OngakuModClient.PROGRESS_BAR, barX, barY, 0, 0, filledWidth, barHeight, 48, 8);
+                    }
                     
                     String timeStr = String.format("%d:%02d / %d:%02d", (elapsed/20)/60, (elapsed/20)%60, (total/20)/60, (total/20)%60);
                     graphics.pose().pushPose();

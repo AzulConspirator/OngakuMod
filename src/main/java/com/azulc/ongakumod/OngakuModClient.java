@@ -21,6 +21,7 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 public class OngakuModClient {
 
     public static final ResourceLocation BUTTON_ICONS = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/gui/controller.png");
+    public static final ResourceLocation PROGRESS_BAR = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/gui/playback_progress.png");
     public static final ResourceLocation BG_SPRITE = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "ui_bg");
     public static final ResourceLocation BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "ui_button");
     public static final ResourceLocation ENTRY_ACTIVE = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "ui_entry_active");
