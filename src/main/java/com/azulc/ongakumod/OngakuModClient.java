@@ -20,6 +20,11 @@ import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 @EventBusSubscriber(modid = OngakuMod.MODID, value = Dist.CLIENT)
 public class OngakuModClient {
 
+    public static final ResourceLocation BUTTON_ICONS = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/gui/controller.png");
+    public static final ResourceLocation BG_SPRITE = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "ui_bg");
+    public static final ResourceLocation BUTTON_SPRITE = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "ui_button");
+    public static final ResourceLocation ENTRY_ACTIVE = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "ui_entry_active");
+    public static final ResourceLocation ENTRY_INACTIVE = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "ui_entry_inactive");
     public static ModelResourceLocation VinylModel = new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "block/vinyl"), "standalone");
     public static ModelResourceLocation SleeveModel = new ModelResourceLocation(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "block/vinyl_sleeve"), "standalone");
     

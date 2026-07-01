@@ -1,18 +1,16 @@
 package com.azulc.ongakumod.client.screen;
 
-import com.azulc.ongakumod.OngakuMod;
+import com.azulc.ongakumod.OngakuModClient;
 import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.network.TerminalActionPayload;
 import com.azulc.ongakumod.util.TerminalControlHandler;
+import com.azulc.ongakumod.util.UIHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 
 import net.minecraft.client.gui.GuiGraphics;
-import net.minecraft.client.gui.components.Button;
-import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.Item.TooltipContext;
 import net.minecraft.world.item.TooltipFlag;
@@ -20,11 +18,9 @@ import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.function.BooleanSupplier;
 
 public class TerminalScreen extends AbstractContainerScreen<TerminalMenu> 
 {    
-    public static final ResourceLocation BUTTON_ICONS = ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "textures/gui/controller.png");
     ControllerSnapshot snapshot;
     private long lastActionTime = 0;
 
@@ -48,15 +44,15 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
         int startY = this.topPos + 85;
         int spacing = 21;
         this.addRenderableWidget(
-            new TerminalIconButton(startX,startY,2,
+            new UIHelper.TerminalIconButton(startX,startY,2,
                 Component.translatable("general.ongakumod.stop"),() -> false, b -> sendAction( TerminalControlHandler.ACTION_STOP,0,this.menu.IsblockMode()))
         );
         this.addRenderableWidget(
-            new TerminalIconButton(startX + spacing,startY,0,
+            new UIHelper.TerminalIconButton(startX + spacing,startY,0,
                 Component.literal(Component.translatable("general.ongakumod.play").getString()+" / "+Component.translatable("general.ongakumod.skip").getString()),() -> false, b -> sendAction(TerminalControlHandler.ACTION_PLAY_TRACK,this.menu.getSnapshot().playlistIndex(),this.menu.IsblockMode()))
         );
         this.addRenderableWidget(
-            new TerminalIconButton(startX + (spacing * 2),startY,3,
+            new UIHelper.TerminalIconButton(startX + (spacing * 2),startY,3,
                 Component.translatable("general.ongakumod.autoplay"),() -> this.menu.getSnapshot() != null&& this.menu.getSnapshot().autoplay(), b -> sendAction(TerminalControlHandler.ACTION_TOGGLE_AP,0,this.menu.IsblockMode())
             )
         );
@@ -79,11 +75,9 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
 
     @Override
     protected void renderBg(GuiGraphics graphics, float partialTick, int mouseX, int mouseY) {
-        // Flat UI panels background fills
-        graphics.fill(this.leftPos, this.topPos, this.leftPos + this.imageWidth, this.topPos + this.imageHeight, 0x66000000);
-        graphics.fill(this.leftPos, this.topPos, this.leftPos + this.imageWidth, this.topPos + 1, 0x66FFFFFF);
-        graphics.fill(this.leftPos, this.topPos + this.imageHeight - 1, this.leftPos + this.imageWidth, this.topPos + this.imageHeight, 0x66FFFFFF);
-
+        // BG
+        graphics.blitSprite(OngakuModClient.BG_SPRITE,this.leftPos, this.topPos, this.imageWidth, this.imageHeight);
+        //
         this.snapshot = this.menu.getSnapshot();
         if (this.snapshot == null) {
             graphics.drawCenteredString(this.font,(Component.translatable("terminal.ongakumod.pendingconnection").getString()), this.leftPos + (this.imageWidth / 2), this.topPos + (this.imageHeight / 2) - 4, 0xFFAAAAAA);
@@ -129,32 +123,5 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
         this.renderBg(graphics, delta, mouseX, mouseY);
         super.render(graphics, mouseX, mouseY, delta);
         this.renderTooltip(graphics, mouseX, mouseY);
-    }
-
-    public static class TerminalIconButton extends Button {
-        private final int iconIndex;
-        private final BooleanSupplier activeStateSupplier;
-
-        public TerminalIconButton(int x, int y, int iconIndex, Component tooltip, BooleanSupplier activeStateSupplier, OnPress onPress) {
-            super(x, y, 20, 20, Component.empty(), onPress, Button.DEFAULT_NARRATION);
-            this.iconIndex = iconIndex;
-            this.activeStateSupplier = activeStateSupplier;
-            if (tooltip != null) {
-                this.setTooltip(Tooltip.create(tooltip));
-            }
-        }
-
-        @Override
-        public void renderWidget(GuiGraphics graphics, int mouseX, int mouseY, float partialTick) {
-            int bgColor = this.isHoveredOrFocused() ? 0x66FFFFFF : 0x66000000;
-            graphics.fill(this.getX(), this.getY(), this.getX() + this.width, this.getY() + this.height, bgColor);
-
-            int u = this.iconIndex * 16;
-            graphics.blit(BUTTON_ICONS, this.getX() + (this.width - 16) / 2, this.getY() + (this.height - 16) / 2, u, 0, 16, 16, 128, 16);
-
-            if (activeStateSupplier.getAsBoolean()) {
-                graphics.fill(this.getX() + this.width - 5, this.getY() + 1, this.getX() + this.width - 1, this.getY() + 5, 0xFF55FF55);
-            }
-        }
     }
 }

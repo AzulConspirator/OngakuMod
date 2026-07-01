@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Optional;
 
 import com.azulc.ongakumod.OngakuMod;
+import com.azulc.ongakumod.OngakuModClient;
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
 import com.azulc.ongakumod.util.LinkHelper;
@@ -62,19 +63,15 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             DiscIdentity identity = DiscIdentityHelper.get(stack);
             boolean isEtched = LinkHelper.hasComponentByString(stack, "etched:music");
 
-            if (isEtched)
-            {
+            if (isEtched){
                 ordered.put(i, new MusicEntry(stack, i, 1, identity));
             }
-            else
-            {
+            else{
                 MusicEntry existing = ordered.get(identity);
-                if (existing != null)
-                {
+                if (existing != null){
                     ordered.put(identity, new MusicEntry(existing.disc, existing.index, existing.count + 1, identity));
                 }
-                else
-                {
+                else{
                     ordered.put(identity, new MusicEntry(stack, i, 1, identity));
                 }
             }
@@ -111,6 +108,14 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         return stack.getTooltipLines(Item.TooltipContext.of(level), player, tooltip);
     }
 
+    @Override
+    protected void renderItem(GuiGraphics guiGraphics, int mouseX, int mouseY, float partialTick, int index, int left, int top, int width, int height) {
+        // Vanilla passes (itemHeight - 4) here; override with the real row height
+        // so backgrounds/sprites fill the full row with no gap.
+        int gapheight = this.itemHeight - 2;
+        super.renderItem(guiGraphics, mouseX, mouseY, partialTick, index, left, top, width, gapheight);
+    }
+
     public class MusicEntry extends ObjectSelectionList.Entry<MusicEntry>
     {
         public final ItemStack disc;
@@ -130,8 +135,10 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
         public void render(GuiGraphics graphics, int index, int y, int x, int width, int height, int mouseX, int mouseY, boolean isHovered, float partialTick)
         {
             int rowWidth = getRowWidth();
-            int bgRight = x + rowWidth - 4;
-            int bgBottom = y + height - 1;
+            int SpriteWidth = rowWidth - 4;
+            int SpriteHeight = height;
+            int bgRight = x + SpriteWidth;
+            int bgBottom = y + SpriteHeight;
 
             boolean isExcluded = screen.getMenu().getBlockEntity().isExcluded(this.disc);
             boolean isSelected = MusicListWidget.this.getSelected() == this;
@@ -139,27 +146,26 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int mainColor = isExcluded ? 0xFF666666 : 0xFFFFFFFF;
             int subColor = isExcluded ? 0xFF444444 : 0xFFAAAAAA;
 
-            int jukeboxStatus = screen.getMenu().getData().get(2); // 1 = playing, 0 = idle
-/*             DiscIdentity playing = screen.getMenu().getBlockEntity().getCurrentlyPlayingIdentity();
-            boolean isNowPlaying = false;
-            if (jukeboxStatus == 1 && playing != null && this.identity ==playing) {
-                isNowPlaying = true;
-            } */
+            int jukeboxStatus = screen.getMenu().getData().get(2);
             boolean isNowPlaying = (jukeboxStatus == 1 && this.index == screen.getMenu().getData().get(1));
-            // 2. Render visual highlights
+            
+            // Draw backgrounds
+            if (isExcluded) {
+                graphics.blitSprite(OngakuModClient.ENTRY_INACTIVE, x, y, SpriteWidth, SpriteHeight);
+            } else {
+                graphics.blitSprite(OngakuModClient.ENTRY_ACTIVE, x, y, SpriteWidth, SpriteHeight);
+            }
+            
             if (isNowPlaying) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x4455FF55);
-                graphics.fill(x, y, x + 2, bgBottom, 0xFF55FF55);
             } else if (isSelected) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x33FFFFFF);
-                graphics.fill(x, y, x + 2, bgBottom, 0xFFFFFFFF);
             } else if (isHovered) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x22FFFFFF);
             }
-            if (isExcluded) {
-                graphics.setColor(0.3f, 0.3f, 0.3f, 1.0f);
-            }
-            graphics.renderFakeItem(disc, x + 4, y);
+
+            int itemTargetY = y + ((height - 16) / 2);
+            graphics.renderFakeItem(disc, x + 4, itemTargetY);
             graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
 
             List<Component> tooltip = getDiscDescription(disc, Minecraft.getInstance().level, Minecraft.getInstance().player, TooltipFlag.Default.NORMAL);
@@ -176,41 +182,41 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
                     String countText = this.count > 1 ? " x" + this.count : "";
 
                     graphics.pose().pushPose();
-                    graphics.pose().translate(textX, y + 2, 0);
+                    graphics.pose().translate(textX, y + 3, 0);
                     graphics.pose().scale(0.8f, 0.8f, 1.0f);
                     graphics.drawString(Minecraft.getInstance().font, songTitle + countText, 0, 0, mainColor, false);
                     graphics.pose().popPose();
 
                     graphics.pose().pushPose();
-                    graphics.pose().translate(textX, y + 10, 0);
+                    graphics.pose().translate(textX, y + 11, 0);
                     graphics.pose().scale(0.6f, 0.6f, 1.0f);
                     graphics.drawString(Minecraft.getInstance().font, artistName, 0, 0, subColor, false);
                     graphics.pose().popPose();
                 }
                 else
                 {
-                    graphics.drawString(Minecraft.getInstance().font, fullText, textX, y + 6, mainColor, false);
+                    graphics.drawString(Minecraft.getInstance().font, fullText, textX, y + ((height - 9) / 2), mainColor, false);
                 }
             }
             else
             {
-                graphics.drawString(Minecraft.getInstance().font, disc.getHoverName(), textX, y + 6, mainColor, false);
+                graphics.drawString(Minecraft.getInstance().font, disc.getHoverName(), textX, y + ((height - 9) / 2), mainColor, false);
             }
 
             if (isHovered)
             {
                 int rightEdge = x + rowWidth - 10;
-                int iconY = y + 2;
+                int iconTargetY = y + ((height - 12) / 2);
 
-                renderScaledIcon(graphics, rightEdge - 42, iconY, 4);
-                renderScaledIcon(graphics, rightEdge - 27, iconY, 5);
-                renderScaledIcon(graphics, rightEdge - 12, iconY, isExcluded ? 7 : 6);
+                renderScaledIcon(graphics, rightEdge - 42, iconTargetY, 4); // Move Queue Up
+                renderScaledIcon(graphics, rightEdge - 27, iconTargetY, 5); // Move Queue Down
+                renderScaledIcon(graphics, rightEdge - 12, iconTargetY, isExcluded ? 7 : 6); // Excluded
             }
         }
 
         private void renderScaledIcon(GuiGraphics graphics, int x, int y, int iconIndex)
         {
-            graphics.blit(AutoplayScreen.BUTTON_ICONS, x, y, 12, 12, iconIndex * 16, 0, 16, 16, 128, 16);
+            graphics.blit(OngakuModClient.BUTTON_ICONS, x, y, 12, 12, iconIndex * 16, 0, 16, 16, 128, 16);
         }
 
         @Override
