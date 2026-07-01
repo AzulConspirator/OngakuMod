@@ -45,6 +45,7 @@ import com.azulc.ongakumod.util.PlaylistHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.PlaylistEntry;
+import com.azulc.ongakumod.util.TerminalControlHandler;
 
 public class AutoplayControllerBlockEntity extends BlockEntity 
 {
@@ -497,6 +498,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             level.setBlock(jukeboxPos, newState, 3);
         }
         LinkHelper.broadcastToSpeakers(this,true, discCopy);
+        TerminalControlHandler.broadcastToTerminalOnline((ServerLevel) level, networkId, true, discCopy);
         rack.setChanged();
         level.sendBlockUpdated(rack.getBlockPos(),rack.getBlockState(),rack.getBlockState(),3);
         level.levelEvent(null, 1010, jukeboxPos, Item.getId(discCopy.getItem()));
@@ -520,6 +522,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             level.sendBlockUpdated(jukeboxPos, level.getBlockState(jukeboxPos), level.getBlockState(jukeboxPos), 3);
             level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
             LinkHelper.broadcastToSpeakers(this,false,null);
+            TerminalControlHandler.broadcastToTerminalOnline((ServerLevel) level, networkId, false, null);
             PlaylistHelper.broadcastPlaylistUpdate(this);
         }      
     }

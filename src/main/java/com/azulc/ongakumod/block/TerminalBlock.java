@@ -125,11 +125,12 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
                 tag.putUUID("controller_id", terminal.getNetworkId());
                 dropStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
                 for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                    TerminalControlHandler.dispatchAudio(player, terminal.getNetworkId(), Optional.empty(), true, true,Optional.of(pos));
+                    TerminalControlHandler.broadcastToTerminalOffline(player, terminal.getNetworkId(), Optional.empty(), true, true,Optional.of(pos));
                 }
+                ControllerRegistry.get((ServerLevel) level).unregisterTerminal(terminal.getNetworkId(), pos);
                 Block.popResource(level, pos, dropStack);
             }
-            super.onRemove(state, level, pos, newState, isMoving);
+            //super.onRemove(state, level, pos, newState, isMoving);
         }
     }
     @Override
@@ -143,6 +144,7 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
                 if (tag.hasUUID("controller_id")) {
                     UUID id = tag.getUUID("controller_id");
                     terminalBE.setNetworkId(id);
+                    ControllerRegistry.get((ServerLevel) level).registerTerminal(id, pos);
                 }
             }
         }

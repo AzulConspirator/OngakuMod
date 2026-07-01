@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
+import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.azulc.ongakumod.compat.EtchedBridge;
@@ -43,7 +44,6 @@ public class PlaylistHelper
         for (BlockPos rackPos : linkedRackPositions)
         {
             if (!lvl.isLoaded(rackPos)) continue;
-
             if (lvl.getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack)
             {
                 for (int i = 0; i < rack.getContainerSize(); i++)
@@ -110,7 +110,7 @@ public class PlaylistHelper
         {
             ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
             // Etched discs become unique by URL
-            if (LinkHelper.hasComponentByString(stack, "etched:music"))
+            if (OngakuMod.IS_ETCHED_LOADED && LinkHelper.hasComponentByString(stack, "etched:music"))
             {
                 String url = EtchedBridge.getEtchedUrl(stack);
                 if (url != null && !url.isBlank())

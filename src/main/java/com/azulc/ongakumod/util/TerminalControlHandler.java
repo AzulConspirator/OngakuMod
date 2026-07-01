@@ -59,14 +59,14 @@ public class TerminalControlHandler {
         {
             case ACTION_STOP -> {
                 controller.StopJukebox();
-                dispatchAudio(player, networkId,Optional.empty(),  true, isBlockMode, terminalBlockPos);
+                broadcastToTerminalOffline(player, networkId,Optional.empty(),  true, isBlockMode, terminalBlockPos);
             }
             case ACTION_PLAY_TRACK -> {
                 controller.playNextInQueue();
                 if (controller.currentlyPlayingEntry != null) {
                     ItemStack stack = controller.currentlyPlayingEntry.stack();
                     if (stack != null || LinkHelper.hasComponentByString(stack, "etched:music")) {
-                        dispatchAudio(player, networkId, Optional.of(stack), false, isBlockMode, terminalBlockPos);
+                        broadcastToTerminalOffline(player, networkId, Optional.of(stack), false, isBlockMode, terminalBlockPos);
                     }
                 }
             }
@@ -102,7 +102,7 @@ public class TerminalControlHandler {
             {
                 apEnabled = false;
                 startTick = -1;
-                dispatchAudio(player, controllerUuid,Optional.of(currentDisc), true, isBlockMode, terminalBlockPos);
+                broadcastToTerminalOffline(player, controllerUuid,Optional.of(currentDisc), true, isBlockMode, terminalBlockPos);
             }
             case ACTION_PLAY_TRACK -> 
             {
@@ -115,7 +115,7 @@ public class TerminalControlHandler {
                 currentDisc = playlist.get(trackIndex);
                 startTick = level.getGameTime();
                 if (currentDisc != null || LinkHelper.hasComponentByString(currentDisc, "etched:music")) {
-                    dispatchAudio(player, controllerUuid, Optional.of(currentDisc), false, isBlockMode, terminalBlockPos);
+                    broadcastToTerminalOffline(player, controllerUuid, Optional.of(currentDisc), false, isBlockMode, terminalBlockPos);
                 }
             }
             case ACTION_TOGGLE_AP -> apEnabled = !apEnabled;
@@ -125,20 +125,18 @@ public class TerminalControlHandler {
         registry.updateSnapshot(controllerUuid, updatedSnapshot);
     }
 
-    public static void dispatchAudio(ServerPlayer player, UUID controllerId,Optional<ItemStack> Disc, boolean isStop, boolean isBlockMode, Optional<BlockPos> terminalPos) 
+    public static void broadcastToTerminalOffline(ServerPlayer player, UUID controllerId,Optional<ItemStack> Disc, boolean isStop, boolean isBlockMode, Optional<BlockPos> terminalPos) 
     {
-        if (controllerId == null) {
-            return;
-        }
-        TerminalAudioPayload packet = new TerminalAudioPayload(controllerId,Disc, isStop, isBlockMode, terminalPos,Optional.ofNullable(player.getId()));
-        if (isBlockMode) 
-        {
-            ChunkPos chunkPos = new ChunkPos(terminalPos.get());
-            PacketDistributor.sendToPlayersTrackingChunk(player.serverLevel(), chunkPos, packet);
-        } 
-        else 
-        {
-            PacketDistributor.sendToPlayersTrackingEntityAndSelf(player, packet);
+        if (controllerId == null) {return;}
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player,new TerminalAudioPayload(controllerId,Disc, isStop, isBlockMode, terminalPos,Optional.ofNullable(player.getId())));
+    }
+
+    public static void broadcastToTerminalOnline(ServerLevel level, UUID controllerId, boolean isPlaying, ItemStack disc) 
+    {
+        for (BlockPos pos : ControllerRegistry.get(level).getLinkedTerminals(controllerId)) {
+            if (!level.isLoaded(pos)) continue;
+            TerminalAudioPayload packet = new TerminalAudioPayload(controllerId, Optional.ofNullable(disc), !isPlaying, true, Optional.of(pos), Optional.empty());
+            PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(pos), packet);
         }
     }
 

@@ -112,7 +112,7 @@ public class AutoplayControllerBlock extends HorizontalDirectionalBlock implemen
                 if (level.getServer() != null) 
                 {
                     for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                        TerminalControlHandler.dispatchAudio(player, AutoplayControllerBlockEntity.getNetworkId(controller), Optional.empty(),true, false,Optional.of(BlockPos.ZERO));
+                        TerminalControlHandler.broadcastToTerminalOffline(player, AutoplayControllerBlockEntity.getNetworkId(controller), Optional.empty(),true, false,Optional.of(BlockPos.ZERO));
                     }
                 }
                  if(level instanceof ServerLevel serverLevel)
