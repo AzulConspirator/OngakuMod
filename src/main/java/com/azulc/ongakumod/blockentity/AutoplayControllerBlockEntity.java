@@ -50,6 +50,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
 {
     private UUID networkId = UUID.randomUUID();
     private int tickCounter = 0;
+    private int ticksSinceLoad = 0;
     public PlaylistEntry currentlyPlayingEntry = null;
     public int currentPlaylistIndex = -1;
     private long songStartTick = -1;
@@ -147,15 +148,15 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         }
     }
 
-    public static void serverTick(Level level, BlockPos pos, BlockState state, AutoplayControllerBlockEntity entity) 
-    {
+    public static void serverTick(Level level, BlockPos pos, BlockState state, AutoplayControllerBlockEntity entity) {
+        entity.ticksSinceLoad++;
         entity.tickCounter++;
-        // Run validation every 20 ticks (1 second)
         if (entity.tickCounter % 20 == 0) {
-            entity.validateAndProcess(level,pos);
-            if(level instanceof ServerLevel serverLevel)
-            {
-                ControllerRegistry.get(serverLevel).updateSnapshot(getNetworkId(entity),createSnapshot(entity));
+            if (entity.ticksSinceLoad > 100) { // ~5 seconds grace period
+                entity.validateAndProcess(level, pos);
+            }
+            if (level instanceof ServerLevel serverLevel) {
+                ControllerRegistry.get(serverLevel).updateSnapshot(getNetworkId(entity), createSnapshot(entity));
             }
         }
         // Autoplay Engine (Runs every tick)
@@ -263,7 +264,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             exclusionTag.add(disc);
         }
         //save currentlyplaying
-        if(currentlyPlayingEntry != null && currentlyPlayingEntry.stack() != null)
+        if(currentlyPlayingEntry != null && currentlyPlayingEntry.stack() != null && !currentlyPlayingEntry.stack().isEmpty())
         {
             CompoundTag playing = new CompoundTag();
             playing.putLong("rack",currentlyPlayingEntry.rackPos().asLong());

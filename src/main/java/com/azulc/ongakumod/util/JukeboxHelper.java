@@ -2,7 +2,6 @@ package com.azulc.ongakumod.util;
 
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
-import com.azulc.ongakumod.util.PlaylistHelper.PlaylistEntry;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
@@ -37,48 +36,26 @@ public class JukeboxHelper
         Controller.JukeboxPosition = jukeboxPos;
         return jukeboxPos;
     }
-    public static void reconcileJukeboxState(AutoplayControllerBlockEntity Controller,ItemStack playing) {
-        var linkedRackPositions = Controller.getLinkedRackPositions();
-        for (BlockPos rackPos : linkedRackPositions) {
-            DiscRackBlockEntity rack = LinkHelper.getRack(Controller,rackPos);
-            if (rack == null) continue;
-
-            for (int i = 0; i < rack.getContainerSize(); i++) {
-                if (rack.getItem(i).isEmpty()) {
-                    Controller.currentlyPlayingEntry = new PlaylistEntry(rackPos, i, playing.copy());
-                    Controller.setChanged();
-                    return; 
-                }
-            }
-        }
-    }
+    
     public static int CheckJukeStatus(AutoplayControllerBlockEntity controller, BlockPos jukeboxPos)
     {
         Level level = controller.getLevel();
         if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
-            if (jukebox.getBlockState().getValue(JukeboxBlock.HAS_RECORD)) 
-            {
+            if (jukebox.getBlockState().getValue(JukeboxBlock.HAS_RECORD)) {
                 boolean playing = jukebox.getSongPlayer().isPlaying() || controller.currentlyPlayingEntry != null;
                 return playing ? 1 : 0;
             } 
-            else 
-            {
+            else {
                 return 0;
             }
         }
-        else
-        {
+        else {
             return -1;
         }
     }
     
     public static void clearJukebox(AutoplayControllerBlockEntity Controller, JukeboxBlockEntity jukebox, BlockPos pos) 
     {
-        System.out.println(
-            "STOP JUKEBOX " + pos +
-            " playing=" +
-            jukebox.getSongPlayer().isPlaying()
-        );
         Level level = Controller.getLevel();
         BlockState state = level.getBlockState(pos);
         level.levelEvent(1011, pos, 0); 
