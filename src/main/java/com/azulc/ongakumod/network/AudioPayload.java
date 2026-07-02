@@ -13,10 +13,10 @@ import net.minecraft.world.item.ItemStack;
 import java.util.Optional;
 import java.util.UUID;
 
-public record TerminalAudioPayload(UUID controllerId,Optional<ItemStack> Disc, boolean isStopPacket,boolean isBlockMode,Optional<BlockPos> blockPos,Optional<Integer> entityId) implements CustomPacketPayload 
+public record AudioPayload(UUID controllerId,Optional<ItemStack> Disc, boolean isStopPacket,boolean isBlockMode,Optional<BlockPos> blockPos,Optional<Integer> entityId) implements CustomPacketPayload 
 {
-    public static final Type<TerminalAudioPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "terminal_audio"));
-    public static final StreamCodec<RegistryFriendlyByteBuf, TerminalAudioPayload> STREAM_CODEC = StreamCodec.of(
+    public static final Type<AudioPayload> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(OngakuMod.MODID, "audio"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, AudioPayload> STREAM_CODEC = StreamCodec.of(
         (buf, payload) -> { // Encoder
             buf.writeBoolean(payload.controllerId != null);
             if (payload.controllerId != null) {
@@ -34,7 +34,7 @@ public record TerminalAudioPayload(UUID controllerId,Optional<ItemStack> Disc, b
             if (buf.readBoolean()) {
                 controllerId = UUIDUtil.STREAM_CODEC.decode(buf);
             } 
-            return new TerminalAudioPayload(
+            return new AudioPayload(
                 controllerId,
                 ByteBufCodecs.optional(ItemStack.STREAM_CODEC).decode(buf),
                 buf.readBoolean(),

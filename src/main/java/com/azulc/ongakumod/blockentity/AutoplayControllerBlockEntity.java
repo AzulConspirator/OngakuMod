@@ -37,6 +37,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.azulc.ongakumod.OngakuMod;
+import com.azulc.ongakumod.network.TerminalControlHandler;
 import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.JukeboxHelper;
@@ -45,7 +46,6 @@ import com.azulc.ongakumod.util.PlaylistHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.PlaylistEntry;
-import com.azulc.ongakumod.util.TerminalControlHandler;
 
 public class AutoplayControllerBlockEntity extends BlockEntity 
 {
@@ -391,7 +391,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         return this.linkedRackPositions;
     }
     public Set<BlockPos> getLinkedSpeakerPositions() {
-        return linkedSpeakers;
+        return this.linkedSpeakers;
     }
     public void StopJukebox() {
         if (this.level == null || this.level.isClientSide) return;
@@ -497,8 +497,8 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             newState = state.setValue(JukeboxBlock.HAS_RECORD, true);
             level.setBlock(jukeboxPos, newState, 3);
         }
-        LinkHelper.broadcastToSpeakers(this,true, discCopy);
-        TerminalControlHandler.broadcastToTerminalOnline((ServerLevel) level, networkId, true, discCopy);
+        LinkHelper.broadcastToSpeakers(this,true, discCopy.copy());
+        TerminalControlHandler.broadcastToTerminalOnline((ServerLevel) level, networkId, true,discCopy.copy());
         rack.setChanged();
         level.sendBlockUpdated(rack.getBlockPos(),rack.getBlockState(),rack.getBlockState(),3);
         level.levelEvent(null, 1010, jukeboxPos, Item.getId(discCopy.getItem()));

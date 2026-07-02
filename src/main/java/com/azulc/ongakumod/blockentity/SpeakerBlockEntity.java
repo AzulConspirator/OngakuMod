@@ -6,6 +6,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.Connection;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -63,8 +64,20 @@ public class SpeakerBlockEntity extends BlockEntity {
         if (tag.contains("ControllerPos")) this.controllerPos = BlockPos.of(tag.getLong("ControllerPos"));
     }
 
+    @Override
+    public void onDataPacket(Connection net, ClientboundBlockEntityDataPacket pkt, HolderLookup.Provider registries) {
+        CompoundTag tag = pkt.getTag();
+        if (tag != null) {
+            this.loadAdditional(tag, registries);
+        }
+    }
+
+    @Override
+    public void handleUpdateTag(CompoundTag tag, HolderLookup.Provider registries) {
+        this.loadAdditional(tag, registries);
+    }
+
     public static void clientTick(Level level, BlockPos pos, BlockState state, SpeakerBlockEntity blockEntity) {
-        // Now 'isPlaying()' will correctly return true on the client!
         if (blockEntity.isPlaying() && level.isClientSide()) {
             if (level.random.nextInt(10) == 0) { // Don't spawn every single tick (less lag)
                 double x = pos.getX() + 0.5 + (level.random.nextDouble() - 0.5) * 0.3;

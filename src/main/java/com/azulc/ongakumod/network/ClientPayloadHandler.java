@@ -4,7 +4,7 @@ import java.util.UUID;
 
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.container.TerminalMenu;
-import com.azulc.ongakumod.util.TerminalSoundHandler;
+import com.azulc.ongakumod.util.SoundHandler;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
@@ -19,22 +19,22 @@ public class ClientPayloadHandler
             }
         });
     }
-    public static void handleTerminalAudio(TerminalAudioPayload payload, IPayloadContext context) 
+    public static void handleAudio(AudioPayload payload, IPayloadContext context) 
     {
         context.enqueueWork(() -> {
             UUID controllerId = payload.controllerId();
             if (payload.isStopPacket()) {
-                TerminalSoundHandler.stopSound(controllerId);
+                SoundHandler.stopSound(controllerId);
                 return;
             }
 
             if (payload.isBlockMode()) {
                 payload.blockPos().ifPresent(pos -> 
-                    TerminalSoundHandler.playBlockModeSound(controllerId, payload.Disc(), pos)
+                    SoundHandler.playBlockModeSound(controllerId, payload.Disc(), pos)
                 );
             } else {
                 int playerEntityId = Minecraft.getInstance().player.getId();
-                TerminalSoundHandler.playItemModeSound(controllerId, payload.Disc(), playerEntityId);
+                SoundHandler.playItemModeSound(controllerId, payload.Disc(), playerEntityId);
             }
         });
     }

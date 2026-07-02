@@ -7,19 +7,19 @@ import javax.annotation.Nullable;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.DiscRackBlockEntity;
 import com.azulc.ongakumod.blockentity.SpeakerBlockEntity;
+import com.azulc.ongakumod.network.AudioPayload;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.GlobalPos;
 import net.minecraft.core.component.DataComponentType;
-import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.sounds.SoundEvent;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.JukeboxSong;
+import net.minecraft.world.level.ChunkPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public class LinkHelper {
     //#region Rack Link
@@ -139,25 +139,20 @@ public class LinkHelper {
         }
     }
 
+    @SuppressWarnings("static-access")
     public static void broadcastToSpeakers(AutoplayControllerBlockEntity Controller, boolean isPlaying, @Nullable ItemStack disc) {
         Level level = Controller.getLevel();
         var linkedSpeakers = Controller.getLinkedSpeakerPositions();
             if (level == null || level.isClientSide) return;
+        UUID NetID = Controller.getNetworkId(Controller);
         for (BlockPos speakerPos : linkedSpeakers) {
             if (level.isLoaded(speakerPos)) {
                 BlockEntity be = level.getBlockEntity(speakerPos);
                 if (be instanceof SpeakerBlockEntity speaker) {
                     // Update the BE state so particles work!
                     speaker.setPlaying(isPlaying);
-
-                    if (isPlaying && disc != null) {
-                        int songId = getSongId(level, disc);
-                        if (songId != -1) {
-                            level.levelEvent(null, 1010, speakerPos, songId);
-                        }
-                    } else {
-                        level.levelEvent(1011, speakerPos, 0);
-                    }
+                    AudioPayload packet = new AudioPayload(NetID, Optional.ofNullable(disc), isPlaying, true, Optional.of(speakerPos), Optional.empty());
+                    PacketDistributor.sendToPlayersTrackingChunk((ServerLevel)level, new ChunkPos(speakerPos), packet);
                 }
                 else
                 {
@@ -167,23 +162,6 @@ public class LinkHelper {
         }
     }
 
-    // Helper to get the correct Registry ID for the song
-    private static int getSongId(Level level, ItemStack stack) {
-        var songHolder = stack.get(DataComponents.JUKEBOX_PLAYABLE);
-        if (songHolder != null) 
-        {   
-            var E = level.registryAccess().registryOrThrow(Registries.JUKEBOX_SONG).getId(songHolder.song().key());
-            //OngakuMod.LOGGER.info("ID is " + E);
-            return E;
-        }
-        return -1;
-    }
-
-    public static SoundEvent getSoundFromDiscId(Level level, ItemStack discId) 
-    {
-        if (discId == null || discId.isEmpty()) {return null;}
-        return JukeboxSong.fromStack(level.registryAccess(), discId).map(holder -> holder.value().soundEvent().value()).orElse(null);
-    }
     //#endregion
     public static boolean ControllerExist(UUID UUIDgiven, Level level,GlobalPos BE)
     {

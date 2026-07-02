@@ -1,7 +1,8 @@
-package com.azulc.ongakumod.util;
+package com.azulc.ongakumod.network;
 
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
-import com.azulc.ongakumod.network.TerminalAudioPayload;
+import com.azulc.ongakumod.util.ControllerRegistry;
+import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 
 import net.minecraft.core.BlockPos;
@@ -128,14 +129,14 @@ public class TerminalControlHandler {
     public static void broadcastToTerminalOffline(ServerPlayer player, UUID controllerId,Optional<ItemStack> Disc, boolean isStop, boolean isBlockMode, Optional<BlockPos> terminalPos) 
     {
         if (controllerId == null) {return;}
-        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player,new TerminalAudioPayload(controllerId,Disc, isStop, isBlockMode, terminalPos,Optional.ofNullable(player.getId())));
+        PacketDistributor.sendToPlayersTrackingEntityAndSelf(player,new AudioPayload(controllerId,Disc, isStop, isBlockMode, terminalPos,Optional.ofNullable(player.getId())));
     }
 
     public static void broadcastToTerminalOnline(ServerLevel level, UUID controllerId, boolean isPlaying, ItemStack disc) 
     {
         for (BlockPos pos : ControllerRegistry.get(level).getLinkedTerminals(controllerId)) {
             if (!level.isLoaded(pos)) continue;
-            TerminalAudioPayload packet = new TerminalAudioPayload(controllerId, Optional.ofNullable(disc), !isPlaying, true, Optional.of(pos), Optional.empty());
+            AudioPayload packet = new AudioPayload(controllerId, Optional.ofNullable(disc), !isPlaying, true, Optional.of(pos), Optional.empty());
             PacketDistributor.sendToPlayersTrackingChunk(level, new ChunkPos(pos), packet);
         }
     }

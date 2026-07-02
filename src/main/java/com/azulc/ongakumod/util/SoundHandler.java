@@ -14,6 +14,8 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.JukeboxSong;
+import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
 import net.neoforged.api.distmarker.Dist;
 import net.neoforged.bus.api.SubscribeEvent;
@@ -27,13 +29,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @EventBusSubscriber(modid = OngakuMod.MODID, value = Dist.CLIENT)
-public class TerminalSoundHandler 
+public class SoundHandler 
 {
     private static final int SOUND_STOP_CHECK_INTERVAL = 10;
     private static final Map<UUID, SoundInstance> activeTerminalSounds = new ConcurrentHashMap<>();
     private static long lastPlaybackChecked = 0;
 
-    private TerminalSoundHandler() {}
+    private SoundHandler() {}
 
     public static void playSound(UUID controllerId, SoundInstance sound) {
         stopSound(controllerId);
@@ -50,9 +52,10 @@ public class TerminalSoundHandler
     // --- MODE 1: BLOCK MODE (Static Position Attenuation) ---
     public static void playBlockModeSound(UUID controllerId, Optional<ItemStack> Disc, BlockPos pos) {
         ItemStack disc = Disc.orElse(ItemStack.EMPTY);
+        if (disc == null || disc.isEmpty()) return;
         SoundEvent soundEvent = null;
         if (!disc.isEmpty()) {
-            soundEvent = LinkHelper.getSoundFromDiscId(Minecraft.getInstance().level, disc);
+            soundEvent = getSoundFromDiscId(Minecraft.getInstance().level, disc);
         }
         if (OngakuMod.IS_ETCHED_LOADED && Disc.isPresent()) {
             ItemStack stack = Disc.get();
@@ -69,6 +72,7 @@ public class TerminalSoundHandler
     // --- MODE 2: ITEM MODE / MP3 MODE (Entity-Bound Attenuation) ---
     public static void playItemModeSound(UUID controllerId, Optional<ItemStack> Disc, int entityId) {
         ClientLevel level = Minecraft.getInstance().level;
+        
         if (level == null) return;
 
         Entity entity = level.getEntity(entityId);
@@ -77,9 +81,10 @@ public class TerminalSoundHandler
             return;
         }
         ItemStack disc = Disc.orElse(ItemStack.EMPTY);
+        if (disc == null || disc.isEmpty()) return;
         SoundEvent soundEvent = null;
         if (!disc.isEmpty()) {
-            soundEvent = LinkHelper.getSoundFromDiscId(Minecraft.getInstance().level, disc);
+            soundEvent = getSoundFromDiscId(Minecraft.getInstance().level, disc);
         }
         if (OngakuMod.IS_ETCHED_LOADED && Disc.isPresent()) {
             ItemStack stack = Disc.get();
@@ -122,5 +127,11 @@ public class TerminalSoundHandler
             activeTerminalSounds.clear();
             lastPlaybackChecked = 0;
         }
+    }
+    
+    public static SoundEvent getSoundFromDiscId(Level level, ItemStack discId) 
+    {
+        if (discId == null || discId.isEmpty()) {return null;}
+        return JukeboxSong.fromStack(level.registryAccess(), discId).map(holder -> holder.value().soundEvent().value()).orElse(null);
     }
 }

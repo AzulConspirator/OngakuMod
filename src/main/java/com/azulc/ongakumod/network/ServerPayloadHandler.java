@@ -4,7 +4,6 @@ import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.PlaylistHelper;
-import com.azulc.ongakumod.util.TerminalControlHandler;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.server.level.ServerLevel;
