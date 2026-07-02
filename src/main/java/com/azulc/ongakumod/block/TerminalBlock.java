@@ -9,7 +9,7 @@ import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.LinkHelper;
-import com.azulc.ongakumod.util.TerminalControlHandler;
+import com.azulc.ongakumod.network.TerminalControlHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
