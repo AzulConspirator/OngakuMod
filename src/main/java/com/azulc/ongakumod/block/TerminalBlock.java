@@ -118,19 +118,23 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
     protected void onRemove(BlockState state, Level level, BlockPos pos, BlockState newState, boolean isMoving) {
         if (!state.is(newState.getBlock())) {
             BlockEntity be = level.getBlockEntity(pos);
-            if (be instanceof TerminalBlockEntity terminal && terminal.getNetworkId() != null) 
+            if (be instanceof TerminalBlockEntity terminal) 
             {
                 ItemStack dropStack = new ItemStack(this);
-                CompoundTag tag = new CompoundTag();                
-                tag.putUUID("controller_id", terminal.getNetworkId());
-                dropStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
-                for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {
-                    TerminalControlHandler.broadcastToTerminalOffline(player, terminal.getNetworkId(), Optional.empty(), true, true,Optional.of(pos));
+                if (terminal.getNetworkId() != null)
+                {
+                    CompoundTag tag = new CompoundTag();                
+                    tag.putUUID("controller_id", terminal.getNetworkId());
+                    dropStack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+                    for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) 
+                    {
+                        TerminalControlHandler.broadcastToTerminalOffline(player, terminal.getNetworkId(), Optional.empty(), true, true,Optional.of(pos));
+                    }
+                    ControllerRegistry.get((ServerLevel) level).unregisterTerminal(terminal.getNetworkId(), pos);
                 }
-                ControllerRegistry.get((ServerLevel) level).unregisterTerminal(terminal.getNetworkId(), pos);
                 Block.popResource(level, pos, dropStack);
             }
-            //super.onRemove(state, level, pos, newState, isMoving);
+            super.onRemove(state, level, pos, newState, isMoving);
         }
     }
     @Override
