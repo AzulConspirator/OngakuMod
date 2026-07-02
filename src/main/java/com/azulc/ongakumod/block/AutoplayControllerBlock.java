@@ -6,7 +6,7 @@ import com.azulc.ongakumod.container.AutoplayMenu;
 import com.azulc.ongakumod.item.TuningWrenchItem;
 import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.PlaylistHelper;
-import com.azulc.ongakumod.util.TerminalControlHandler;
+import com.azulc.ongakumod.network.TerminalControlHandler;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;

@@ -4,7 +4,7 @@ import java.util.Optional;
 
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.item.TerminalBlockItem; // Adjust to your actual item class name
-import com.azulc.ongakumod.util.TerminalControlHandler;
+import com.azulc.ongakumod.network.TerminalControlHandler;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
 import net.neoforged.bus.api.SubscribeEvent;

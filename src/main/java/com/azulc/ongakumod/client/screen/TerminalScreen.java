@@ -3,7 +3,7 @@ package com.azulc.ongakumod.client.screen;
 import com.azulc.ongakumod.OngakuModClient;
 import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.network.TerminalActionPayload;
-import com.azulc.ongakumod.util.TerminalControlHandler;
+import com.azulc.ongakumod.network.TerminalControlHandler;
 import com.azulc.ongakumod.util.UIHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 
