@@ -12,6 +12,7 @@ import com.azulc.ongakumod.network.ManagePlaylistPayload;
 import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
+import com.azulc.ongakumod.util.UIHelper;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
@@ -147,7 +148,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int subColor = isExcluded ? 0xFF444444 : 0xFFAAAAAA;
 
             int jukeboxStatus = screen.getMenu().getData().get(2);
-            boolean isNowPlaying = (jukeboxStatus == 1 && this.index == screen.getMenu().getData().get(1));
+            boolean isNowPlaying = (jukeboxStatus == 2 && this.index == screen.getMenu().getData().get(1));
             
             // Draw backgrounds
             if (isExcluded) {
@@ -207,18 +208,12 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             {
                 int rightEdge = x + rowWidth - 10;
                 int iconTargetY = y + ((height - 12) / 2);
-
-                renderScaledIcon(graphics, rightEdge - 42, iconTargetY, 4); // Move Queue Up
-                renderScaledIcon(graphics, rightEdge - 27, iconTargetY, 5); // Move Queue Down
-                renderScaledIcon(graphics, rightEdge - 12, iconTargetY, isExcluded ? 7 : 6); // Excluded
+                UIHelper.DrawIcon(graphics, rightEdge - 42, iconTargetY, 12, UIHelper.ICON_QUEUE_UP);
+                UIHelper.DrawIcon(graphics, rightEdge - 27, iconTargetY, 12, UIHelper.ICON_QUEUE_DOWN);
+                UIHelper.DrawIcon(graphics, rightEdge - 12, iconTargetY, 12, isExcluded ? UIHelper.ICON_INCLUDE : UIHelper.ICON_EXCLUDE);
             }
         }
-
-        private void renderScaledIcon(GuiGraphics graphics, int x, int y, int iconIndex)
-        {
-            graphics.blit(OngakuModClient.BUTTON_ICONS, x, y, 12, 12, iconIndex * 16, 0, 16, 16, 128, 16);
-        }
-
+        
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button)
         {
@@ -252,7 +247,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             {
                 MusicListWidget.this.setSelected(this);
                 int jukeStatus = screen.getMenu().getData().get(2);
-                if (jukeStatus == 1)
+                if (jukeStatus == 2)
                 {
                     OngakuMod.LOGGER.info("Clicked :" + this.index+","+this.identity.toString());
                     if (MusicListWidget.this.checkAndUseCooldown()) screen.setSelectedDisc(this.index);

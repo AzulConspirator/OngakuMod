@@ -43,7 +43,7 @@ public class JukeboxHelper
         if (jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox) {
             if (jukebox.getBlockState().getValue(JukeboxBlock.HAS_RECORD)) {
                 boolean playing = jukebox.getSongPlayer().isPlaying() || controller.currentlyPlayingEntry != null;
-                return playing ? 1 : 0;
+                return playing ? 2 : 1;
             } 
             else {
                 return 0;

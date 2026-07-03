@@ -43,18 +43,15 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
         int startX = this.leftPos + ((this.imageWidth - 62) / 2);
         int startY = this.topPos + 85;
         int spacing = 21;
+        int iconSize = 20;
         this.addRenderableWidget(
-            new UIHelper.TerminalIconButton(startX,startY,2,
-                Component.translatable("general.ongakumod.stop"),() -> false, b -> sendAction( TerminalControlHandler.ACTION_STOP,0,this.menu.IsblockMode()))
+            new UIHelper.IconButton(startX, startY, iconSize, iconSize, UIHelper.ICON_STOP, Component.translatable("general.ongakumod.stop"),b -> sendAction( TerminalControlHandler.ACTION_STOP,0,this.menu.IsblockMode()))
         );
         this.addRenderableWidget(
-            new UIHelper.TerminalIconButton(startX + spacing,startY,0,
-                Component.literal(Component.translatable("general.ongakumod.play").getString()+" / "+Component.translatable("general.ongakumod.skip").getString()),() -> false, b -> sendAction(TerminalControlHandler.ACTION_PLAY_TRACK,this.menu.getSnapshot().playlistIndex(),this.menu.IsblockMode()))
+            new UIHelper.IconButton(startX + (spacing), startY, iconSize, iconSize, UIHelper.ICON_PLAY, Component.literal(Component.translatable("general.ongakumod.play").getString()+" / "+Component.translatable("general.ongakumod.skip").getString()),b -> sendAction(TerminalControlHandler.ACTION_PLAY_TRACK,this.menu.getSnapshot().playlistIndex(),this.menu.IsblockMode()))
         );
         this.addRenderableWidget(
-            new UIHelper.TerminalIconButton(startX + (spacing * 2),startY,3,
-                Component.translatable("general.ongakumod.autoplay"),() -> this.menu.getSnapshot() != null&& this.menu.getSnapshot().autoplay(), b -> sendAction(TerminalControlHandler.ACTION_TOGGLE_AP,0,this.menu.IsblockMode())
-            )
+            new UIHelper.IconButton(startX + (spacing * 2), startY, iconSize, iconSize, UIHelper.ICON_AUTOPLAY,() -> this.menu.getSnapshot() != null&& this.menu.getSnapshot().autoplay(), Component.translatable("general.ongakumod.autoplay"), b -> sendAction(TerminalControlHandler.ACTION_TOGGLE_AP,0,this.menu.IsblockMode()))
         );
     }
     private void sendAction(int action, int index, boolean isBlockMode)
@@ -84,13 +81,12 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
             return;
         }
 
-        graphics.fill(this.leftPos + 10, this.topPos + 10, this.leftPos + 16, this.topPos + 16, 0xFF55FF55);
-
         int textY = this.topPos + 32;
         int lineSpacing = 12;
-
+        int indicatorColor = 0;
         if(this.snapshot.currentDisc() != null && !this.snapshot.currentDisc().isEmpty())
         {
+            indicatorColor = 6;
             List<Component> discName = this.snapshot.currentDisc().getTooltipLines(TooltipContext.of(this.minecraft.level),this.minecraft.player,TooltipFlag.Default.NORMAL);
             if (discName.size() >= 2) 
             {
@@ -109,8 +105,10 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
         }
         else
         {
+            indicatorColor = 2;
             graphics.drawString(this.font, (Component.translatable("general.ongakumod.nodisc").getString()) , this.leftPos + 15, textY, 0xFFE0E0E0, false);
         }
+        graphics.blit(OngakuModClient.BOX_STATUS, this.leftPos + 10, this.topPos + 10,8,8, 0, indicatorColor,2,2, 2, 8);
         boolean isPhysicallyLinked = this.menu.IsControllerLoaded(); 
         String mode = isPhysicallyLinked ? (Component.translatable("terminal.ongakumod.direct_connection").getString()) : (Component.translatable("terminal.ongakumod.remote_connection").getString());
         int modeColor = isPhysicallyLinked ? 0xFF55FF55 : 0xFFFFAA55;

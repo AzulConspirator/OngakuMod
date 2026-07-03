@@ -75,17 +75,20 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         int startX = this.leftPos + 3;
         int startY = this.topPos + 130;
         int spacing = 21;
+        int iconSize = 20;
         // 1. STOP
-        this.addRenderableWidget(new UIHelper.IconButton(startX, startY, 20, 20, 2, false, 
+        this.addRenderableWidget(
+            new UIHelper.IconButton(startX, startY, iconSize, iconSize, UIHelper.ICON_STOP, 
             Component.translatable("general.ongakumod.stop"), (b) -> {
-            if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
-            this.lastActionTime = Util.getMillis();
-            PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.STOP,Optional.empty()));
-            this.musicList.refreshList(this.menu.getSyncedDiscs());
-        }));
+                if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
+                this.lastActionTime = Util.getMillis();
+                PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.STOP,Optional.empty()));
+                this.musicList.refreshList(this.menu.getSyncedDiscs());
+            }));
 
         // 2. PLAY
-        this.addRenderableWidget(new UIHelper.IconButton(startX + spacing, startY, 20, 20, 0, false, 
+        this.addRenderableWidget(
+            new UIHelper.IconButton(startX + spacing, startY, iconSize, iconSize, UIHelper.ICON_PLAY, 
             Component.translatable("general.ongakumod.play"), (b) -> {
             if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
             this.lastActionTime = Util.getMillis();
@@ -96,7 +99,8 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
             }
         }));
         // 3. SKIP
-        this.addRenderableWidget(new UIHelper.IconButton(startX + (spacing * 2), startY, 20, 20, 1, false, 
+        this.addRenderableWidget(
+            new UIHelper.IconButton(startX + (spacing * 2), startY, iconSize, iconSize, UIHelper.ICON_SKIP, 
             Component.translatable("general.ongakumod.skip"), (b) -> {
             if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
             this.lastActionTime = Util.getMillis();
@@ -105,7 +109,7 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         }));
 
         // 4. AUTOPLAY (Indicator in corner)
-        this.addRenderableWidget(new UIHelper.IconButton(startX + (spacing * 3), startY, 20, 20, 3, true, 
+        this.addRenderableWidget(new UIHelper.IconButton(startX + (spacing * 3), startY, iconSize, iconSize, UIHelper.ICON_AUTOPLAY, () -> this.menu.getData().get(3) == 1, 
             Component.translatable("general.ongakumod.autoplay"), (b) -> {
             if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
             this.lastActionTime = Util.getMillis();
@@ -144,12 +148,13 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         // 1. Status Indicator
         int jukeStatus = this.menu.getData().get(2);
         int indicatorColor = switch (jukeStatus) {
-            case -1 -> 0xFFFF5555;
-            case 0 -> 0xFF55FF55;
-            case 1 -> 0xFF5555FF;
-            default -> 0xFF888888;
+            case -1 -> 0;
+            case 0 -> 2;
+            case 1 -> 4;
+            case 2 -> 6;
+            default -> 0;
         };
-        graphics.fill(this.leftPos + 10, this.topPos + 10, this.leftPos + 18, this.topPos + 18, indicatorColor);
+        graphics.blit(OngakuModClient.BOX_STATUS, this.leftPos + 10, this.topPos + 10, 8, 8, (float) 0, (float) indicatorColor, 2, 2, 2, 8);
         graphics.drawString(this.font, Component.translatable("block.ongakumod.autoplay_controller"), this.leftPos + 22, this.topPos + 10, 0xFFFFFFFF, false);
         int rawPlayingIndex = this.menu.getData().get(1); 
         List<ItemStack> masterList = this.menu.getSyncedDiscs();
@@ -165,16 +170,17 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
                 int total = this.menu.getData().get(5);
                 if (total > 0) 
                 {
+                    elapsed = elapsed >= total? total : elapsed;
                     float progress = Math.min(1.0f, (float) elapsed / total);
                     int barX = this.leftPos + 10;
                     int barY = this.topPos + 115;
                     int barWidth = 70;
                     int barHeight = 4;
 
-                    graphics.blit(OngakuModClient.PROGRESS_BAR, barX, barY, 0, 4, barWidth, barHeight, 48, 8);
+                    graphics.blit(OngakuModClient.PROGRESS_BAR, barX, barY, 0, 4, barWidth, barHeight, 70, 8);
                     int filledWidth = (int) (barWidth * progress);
                     if (filledWidth > 0) {
-                        graphics.blit(OngakuModClient.PROGRESS_BAR, barX, barY, 0, 0, filledWidth, barHeight, 48, 8);
+                        graphics.blit(OngakuModClient.PROGRESS_BAR, barX, barY, 0, 0, filledWidth, barHeight, 70, 8);
                     }
                     
                     String timeStr = String.format("%d:%02d / %d:%02d", (elapsed/20)/60, (elapsed/20)%60, (total/20)/60, (total/20)%60);
