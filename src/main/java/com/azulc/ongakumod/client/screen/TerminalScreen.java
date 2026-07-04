@@ -80,9 +80,12 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
             graphics.drawCenteredString(this.font,(Component.translatable("terminal.ongakumod.pendingconnection").getString()), this.leftPos + (this.imageWidth / 2), this.topPos + (this.imageHeight / 2) - 4, 0xFFAAAAAA);
             return;
         }
-
+ 
+        int textCenterX = this.leftPos + (this.imageWidth / 2);
         int textY = this.topPos + 32;
         int lineSpacing = 12;
+        int maxTextWidth = this.imageWidth - 20;
+ 
         int indicatorColor = 0;
         if(this.snapshot.currentDisc() != null && !this.snapshot.currentDisc().isEmpty())
         {
@@ -94,26 +97,38 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
                 String[] parts = fullText.split(" - ");
                 if (parts.length == 2) 
                 {
-                    graphics.drawString(this.font, parts[1], this.leftPos + 15, textY, 0xFFFFFFFF);
-                    graphics.drawString(this.font, parts[0], this.leftPos + 15, textY+ lineSpacing, 0xFFAAAAAA);
+                    String song = UIHelper.truncate(this.font, parts[1], maxTextWidth);
+                    String artist = UIHelper.truncate(this.font, parts[0], maxTextWidth);
+                    graphics.drawCenteredString(this.font, song, textCenterX, textY, 0xFFFFFFFF);
+                    graphics.drawCenteredString(this.font, artist, textCenterX, textY + lineSpacing, 0xFFAAAAAA);
                 }
                 else 
                 {
-                    graphics.drawString(this.font, fullText, this.leftPos + 15, textY, 0xFFFFFFFF);
+                    String text = UIHelper.truncate(this.font, fullText, maxTextWidth);
+                    graphics.drawCenteredString(this.font, text, textCenterX, textY, 0xFFFFFFFF);
                 }
             }
         }
         else
         {
             indicatorColor = 2;
-            graphics.drawString(this.font, (Component.translatable("general.ongakumod.nodisc").getString()) , this.leftPos + 15, textY, 0xFFE0E0E0, false);
+            graphics.drawCenteredString(this.font, (Component.translatable("general.ongakumod.nodisc").getString()), textCenterX, textY, 0xFFE0E0E0);
         }
         graphics.blit(OngakuModClient.BOX_STATUS, this.leftPos + 10, this.topPos + 10,8,8, 0, indicatorColor,2,2, 2, 8);
         boolean isPhysicallyLinked = this.menu.IsControllerLoaded(); 
         String mode = isPhysicallyLinked ? (Component.translatable("terminal.ongakumod.direct_connection").getString()) : (Component.translatable("terminal.ongakumod.remote_connection").getString());
         int modeColor = isPhysicallyLinked ? 0xFF55FF55 : 0xFFFFAA55;
-        graphics.drawString(this.font,mode,this.leftPos + 15,textY + (lineSpacing * 2),modeColor,false);
+        float modeScale = 0.7f;
+        int modeWidth = this.font.width(mode);
+        int modeX = this.leftPos + this.imageWidth - 10 - Math.round(modeWidth * modeScale);
+        int modeY = this.topPos + 11;
+        graphics.pose().pushPose();
+        graphics.pose().translate(modeX, modeY, 0);
+        graphics.pose().scale(modeScale, modeScale, 1.0f);
+        graphics.drawString(this.font, mode, 0, 0, modeColor, false);
+        graphics.pose().popPose();
     }
+
 
     @Override
     public void render(GuiGraphics graphics, int mouseX, int mouseY, float delta) {

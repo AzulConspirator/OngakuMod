@@ -140,13 +140,13 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int SpriteHeight = height;
             int bgRight = x + SpriteWidth;
             int bgBottom = y + SpriteHeight;
-
+ 
             boolean isExcluded = screen.getMenu().getBlockEntity().isExcluded(this.disc);
             boolean isSelected = MusicListWidget.this.getSelected() == this;
 
             int mainColor = isExcluded ? 0xFF666666 : 0xFFFFFFFF;
             int subColor = isExcluded ? 0xFF444444 : 0xFFAAAAAA;
-
+ 
             int jukeboxStatus = screen.getMenu().getData().get(2);
             boolean isNowPlaying = (jukeboxStatus == 2 && this.index == screen.getMenu().getData().get(1));
             
@@ -164,14 +164,15 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             } else if (isHovered) {
                 graphics.fill(x, y, bgRight, bgBottom, 0x22FFFFFF);
             }
-
+ 
             int itemTargetY = y + ((height - 16) / 2);
             graphics.renderFakeItem(disc, x + 4, itemTargetY);
             graphics.setColor(1.0f, 1.0f, 1.0f, 1.0f);
-
+ 
             List<Component> tooltip = getDiscDescription(disc, Minecraft.getInstance().level, Minecraft.getInstance().player, TooltipFlag.Default.NORMAL);
             int textX = x + 26;
-
+            int availableTextWidth = (x + SpriteWidth) - textX - 4;
+            Boolean ShouldMove = isHovered || isSelected || isNowPlaying;
             if (tooltip.size() >= 2)
             {
                 String fullText = tooltip.get(1).getString();
@@ -181,29 +182,20 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
                     String songTitle = parts[1];
                     String artistName = parts[0];
                     String countText = this.count > 1 ? " x" + this.count : "";
-
-                    graphics.pose().pushPose();
-                    graphics.pose().translate(textX, y + 3, 0);
-                    graphics.pose().scale(0.8f, 0.8f, 1.0f);
-                    graphics.drawString(Minecraft.getInstance().font, songTitle + countText, 0, 0, mainColor, false);
-                    graphics.pose().popPose();
-
-                    graphics.pose().pushPose();
-                    graphics.pose().translate(textX, y + 11, 0);
-                    graphics.pose().scale(0.6f, 0.6f, 1.0f);
-                    graphics.drawString(Minecraft.getInstance().font, artistName, 0, 0, subColor, false);
-                    graphics.pose().popPose();
+ 
+                    UIHelper.drawScrollingText(graphics, Minecraft.getInstance().font, songTitle + countText, textX, y + 3, availableTextWidth, 0.8f, mainColor,ShouldMove);
+                    UIHelper.drawScrollingText(graphics, Minecraft.getInstance().font, artistName, textX, y + 11, availableTextWidth, 0.6f, subColor,ShouldMove);
                 }
                 else
                 {
-                    graphics.drawString(Minecraft.getInstance().font, fullText, textX, y + ((height - 9) / 2), mainColor, false);
+                    UIHelper.drawScrollingText(graphics, Minecraft.getInstance().font, fullText, textX, y + ((height - 9) / 2), availableTextWidth, mainColor,ShouldMove);
                 }
             }
             else
             {
-                graphics.drawString(Minecraft.getInstance().font, disc.getHoverName(), textX, y + ((height - 9) / 2), mainColor, false);
+                UIHelper.drawScrollingText(graphics, Minecraft.getInstance().font, disc.getHoverName().getString(), textX, y + ((height - 9) / 2), availableTextWidth, mainColor,ShouldMove);
             }
-
+ 
             if (isHovered)
             {
                 int rightEdge = x + rowWidth - 10;

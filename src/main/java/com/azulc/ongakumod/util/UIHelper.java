@@ -1,6 +1,9 @@
 package com.azulc.ongakumod.util;
 
 import com.azulc.ongakumod.OngakuModClient;
+
+import net.minecraft.Util;
+import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
@@ -30,6 +33,80 @@ public class UIHelper
         int u = (iconIndex % ICON_SHEET_COLUMNS) * ICON_SIZE;
         int v = (iconIndex / ICON_SHEET_COLUMNS) * ICON_SIZE;
         graphics.blit(OngakuModClient.BUTTON_ICONS, x, y, renderSize, renderSize, u, v, ICON_SIZE, ICON_SIZE, ICON_SHEET_WIDTH, ICON_SHEET_HEIGHT);
+    }
+
+     
+    // ---------------------------------------------------------------------
+    // Text overflow handling
+    // ---------------------------------------------------------------------
+ 
+    /**
+     * Truncates text to fit maxWidth pixels, appending "..." when it doesn't fit.
+     * Returns the text unchanged if it already fits.
+     */
+    public static String truncate(Font font, String text, int maxWidth) {
+        if (font.width(text) <= maxWidth) return text;
+        String ellipsis = "...";
+        int ellipsisWidth = font.width(ellipsis);
+        String trimmed = font.plainSubstrByWidth(text, Math.max(maxWidth - ellipsisWidth, 0));
+        return trimmed + ellipsis;
+    }
+ 
+    public static void drawScrollingText(GuiGraphics graphics, Font font, String text, int x, int y, int maxWidth, int color, boolean shouldMove) {
+        drawScrollingText(graphics, font, text, x, y, maxWidth, 1.0f, color, true,shouldMove);
+    }
+ 
+    public static void drawScrollingText(GuiGraphics graphics, Font font, String text, int x, int y, int maxWidth, float scale, int color, boolean shouldMove) {
+        drawScrollingText(graphics, font, text, x, y, maxWidth, scale, color, false,shouldMove);
+    }
+ 
+    /**
+     * Draws text that fits within maxWidth normally.it scrolls back and forth ("marquee") to reveal the full string over time
+     */
+    public static void drawScrollingText(GuiGraphics graphics, Font font, String text, int x, int y, int maxWidth, float scale, int color, boolean centerWhenFits, boolean shouldMove) {
+        int textWidth = font.width(text);
+        int scaledMaxWidth = Math.round(maxWidth / scale);
+ 
+        if (textWidth <= scaledMaxWidth) {
+            int localX = centerWhenFits ? (scaledMaxWidth - textWidth) / 2 : 0;
+            graphics.pose().pushPose();
+            graphics.pose().translate(x, y, 0);
+            graphics.pose().scale(scale, scale, 1.0f);
+            graphics.drawString(font, text, localX, 0, color, false);
+            graphics.pose().popPose();
+            return;
+        }
+ 
+        long holdMs = 800L;
+        long travelMs = Math.max(1200L, (long) (textWidth - scaledMaxWidth) * 15L);
+        long cycle = (travelMs + holdMs) * 2;
+        long t = Util.getMillis() % cycle;
+        int offset;
+        if (shouldMove)
+        {        
+            float progress;
+            if (t < holdMs) {
+                progress = 0f; // paused at the start
+            } else if (t < holdMs + travelMs) {
+                progress = (float) (t - holdMs) / travelMs; // scrolling forward
+            } else if (t < holdMs * 2 + travelMs) {
+                progress = 1f; // paused at the end
+            } else {
+                progress = 1f - (float) (t - holdMs * 2 - travelMs) / travelMs; // scrolling back
+            }
+            offset = Math.round(progress * (textWidth - scaledMaxWidth));
+        }
+        else
+        {
+            offset = 0;
+        }
+        graphics.enableScissor(x, y, x + maxWidth, y + Math.round(font.lineHeight * scale) + 1);
+        graphics.pose().pushPose();
+        graphics.pose().translate(x, y, 0);
+        graphics.pose().scale(scale, scale, 1.0f);
+        graphics.drawString(font, text, -offset, 0, color, false);
+        graphics.pose().popPose();
+        graphics.disableScissor();
     }
 
     public static class IconButton extends Button {

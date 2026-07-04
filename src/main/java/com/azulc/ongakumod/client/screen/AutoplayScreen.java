@@ -159,6 +159,11 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         int rawPlayingIndex = this.menu.getData().get(1); 
         List<ItemStack> masterList = this.menu.getSyncedDiscs();
 
+        int maxTextWidth = 80;
+        int textCenterX = this.leftPos + 45;
+        int textViewportX = textCenterX - (maxTextWidth / 2);
+
+
         if (rawPlayingIndex >= 0 && rawPlayingIndex < masterList.size()) 
         {
             ItemStack playingStack = masterList.get(rawPlayingIndex);
@@ -199,13 +204,14 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
                     String[] parts = fullText.split(" - ");
                     if (parts.length == 2) 
                     {
-                        graphics.drawCenteredString(this.font, parts[1], this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
-                        graphics.drawCenteredString(this.font, parts[0], this.leftPos + 45, this.topPos + 75, 0xFFAAAAAA);
+                        UIHelper.drawScrollingText(graphics, this.font, parts[1], textViewportX, this.topPos + 65, maxTextWidth, 0xFFFFFFFF,true);
+                        UIHelper.drawScrollingText(graphics, this.font, parts[0], textViewportX, this.topPos + 75, maxTextWidth, 0xFFAAAAAA,true);
                     }
                     else 
                     {
-                        graphics.drawCenteredString(this.font, fullText, this.leftPos + 45, this.topPos + 65, 0xFFFFFFFF);
+                        UIHelper.drawScrollingText(graphics, this.font, fullText, textViewportX, this.topPos + 65, maxTextWidth, 0xFFFFFFFF,true);
                     }
+
                 }
             }
             else 
@@ -222,14 +228,12 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
-        // If the music list handles the drag (e.g., scrollbar), stop here
         if (this.musicList != null && this.musicList.mouseDragged(mouseX, mouseY, button, dragX, dragY)) {
             return true;
         }
         return super.mouseDragged(mouseX, mouseY, button, dragX, dragY);
     }
 
-    // Also ensure clicks on the scrollbar are captured
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
         if (this.musicList != null && this.musicList.mouseClicked(mouseX, mouseY, button)) {
