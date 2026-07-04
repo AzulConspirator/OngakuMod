@@ -213,29 +213,58 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         );
     }
 
-    private void validateAndProcess(Level level,BlockPos pos) 
+    private void validateAndProcess(Level level, BlockPos pos)
     {
-        if (this.linkedRackPositions.isEmpty()) return;
-        Iterator<BlockPos> iterator = this.linkedRackPositions.iterator();
-        while (iterator.hasNext()) {
-            BlockPos rackPos = iterator.next();
-            if (!level.isLoaded(rackPos)) {
-                continue;
+        if (!this.linkedRackPositions.isEmpty())
+        {
+            Iterator<BlockPos> iterator = this.linkedRackPositions.iterator();
+            while (iterator.hasNext()) {
+                BlockPos rackPos = iterator.next();
+                if (!level.isLoaded(rackPos)) {
+                    continue;
+                }
+                BlockEntity targetBE = level.getBlockEntity(rackPos);
+                if (!(targetBE instanceof DiscRackBlockEntity)) {
+                    iterator.remove();
+                    this.setChanged();
+                }
             }
-            BlockEntity targetBE = level.getBlockEntity(rackPos);
-            if (!(targetBE instanceof DiscRackBlockEntity)) {
-                iterator.remove();
+        }
+        
+        BlockPos jukeboxPos = JukeboxHelper.findJukebox(this);
+        int newStatus = JukeboxHelper.CheckJukeStatus(this, jukeboxPos);
+        boolean isManualSlot = this.currentlyPlayingEntry != null && this.currentlyPlayingEntry.rackPos().equals(BlockPos.ZERO) && this.currentlyPlayingEntry.slotIndex() == -1;
+        // Manual Jukebox Check
+        if (newStatus == 2 && this.currentlyPlayingEntry == null && jukeboxPos != null && level.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox)
+        {
+            ItemStack manualDisc = jukebox.getTheItem();
+            if (!manualDisc.isEmpty())
+            {
+                this.currentlyPlayingEntry = new PlaylistEntry(BlockPos.ZERO, -1, manualDisc.copy());
+                Optional<Holder<JukeboxSong>> songHolderOpt = JukeboxSong.fromStack(level.registryAccess(), manualDisc);
+                if (songHolderOpt.isPresent()) {
+                    this.songDurationTicks = songHolderOpt.get().value().lengthInTicks();
+                    if (this.songDurationTicks <= 0) this.songDurationTicks = 6000;
+                } else if (!BuiltInRegistries.ITEM.getKey(manualDisc.getItem()).getNamespace().equals("minecraft")) {
+                    this.songDurationTicks = 6000;
+                } else {
+                    this.songDurationTicks = 0;
+                }
+                this.songStartTick = level.getGameTime();
                 this.setChanged();
             }
         }
-
-        int newStatus = -1;
-        newStatus = JukeboxHelper.CheckJukeStatus(this, JukeboxHelper.findJukebox(this));
-        if (newStatus != 1)
+        else if (newStatus != 2 && isManualSlot)
+        {
+            this.currentlyPlayingEntry = null;
+            this.songStartTick = -1;
+            this.songDurationTicks = 0;
+            this.setChanged();
+        }
+        if (newStatus != 2)
         {
             LinkHelper.broadcastToSpeakers(this,false, null);
         }
-        // Only sync if the status actually changed to save bandwidth
         if (this.cachedStatus != newStatus) {
             this.data.set(2,newStatus);
             this.setChanged();
