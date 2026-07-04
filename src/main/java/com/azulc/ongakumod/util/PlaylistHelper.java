@@ -23,7 +23,7 @@ import net.neoforged.neoforge.network.PacketDistributor;
 public class PlaylistHelper
 {
     public record PlaylistEntry(BlockPos rackPos, int slotIndex, ItemStack stack) {}
-    public record DiscIdentity(ResourceLocation itemId, String variant)
+    public record DiscIdentity(ResourceLocation itemId, String variant,String InstanceId)
     {
         public boolean hasVariant()
         {
@@ -52,7 +52,7 @@ public class PlaylistHelper
                     if (stack.isEmpty()) continue;
 
                     playlist.add(new PlaylistEntry(rackPos, i, stack.copy()));
-                    DiscIdentity id = DiscIdentityHelper.get(stack);
+                    DiscIdentity id = DiscIdentityHelper.get(stack,rackPos,i);
                     if(!physicalItemTypes.contains(id))
                     {
                         physicalItemTypes.add(id);
@@ -64,7 +64,7 @@ public class PlaylistHelper
         if (controller.currentlyPlayingEntry != null)
         {
             playlist.add(controller.currentlyPlayingEntry);
-            physicalItemTypes.add(DiscIdentityHelper.get(controller.currentlyPlayingEntry.stack()));
+            physicalItemTypes.add(DiscIdentityHelper.get(controller.currentlyPlayingEntry.stack(),controller.currentlyPlayingEntry.rackPos(),controller.currentlyPlayingEntry.slotIndex()));
         }
         else
         {
@@ -75,7 +75,7 @@ public class PlaylistHelper
                 if (!manualDisc.isEmpty())
                 {
                     playlist.add(new PlaylistEntry(BlockPos.ZERO, -1, manualDisc.copy()));
-                    physicalItemTypes.add(DiscIdentityHelper.get(manualDisc));
+                    physicalItemTypes.add(DiscIdentityHelper.get(manualDisc,BlockPos.ZERO,-1));
                 }
             }
         }
@@ -94,8 +94,8 @@ public class PlaylistHelper
         // 4. Sort by custom queue order first, then by rack position and slot
         playlist.sort((a, b) ->
         {
-            int indexA = customQueueOrder.indexOf(DiscIdentityHelper.get(a.stack()));
-            int indexB = customQueueOrder.indexOf(DiscIdentityHelper.get(b.stack()));
+            int indexA = customQueueOrder.indexOf(DiscIdentityHelper.get(a.stack(), a.rackPos(), a.slotIndex()));
+            int indexB = customQueueOrder.indexOf(DiscIdentityHelper.get(b.stack(), b.rackPos(), b.slotIndex()));
 
             return Integer.compare(indexA,indexB);
         });
@@ -106,7 +106,7 @@ public class PlaylistHelper
     {
         private DiscIdentityHelper() {}
 
-        public static DiscIdentity get(ItemStack stack)
+        private static DiscIdentity get(ItemStack stack)
         {
             ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
             // Etched discs become unique by URL
@@ -115,11 +115,17 @@ public class PlaylistHelper
                 String url = EtchedBridge.getEtchedUrl(stack);
                 if (url != null && !url.isBlank())
                 {
-                    return new DiscIdentity(item, url);
+                    return new DiscIdentity(item, url,null);
                 }
             }
 
-            return new DiscIdentity(item, null);
+            return new DiscIdentity(item, null,null);
+        }
+        public static DiscIdentity get(ItemStack stack, BlockPos rackPos, int slotIndex)
+        {
+            DiscIdentity base = get(stack);
+            if (!base.hasVariant()) return base; // regular disc: no split needed, keeps collapsing
+            return new DiscIdentity(base.itemId(), base.variant(), rackPos.asLong() + ":" + slotIndex);
         }
 
         public static boolean shouldCollapse(ItemStack stack)

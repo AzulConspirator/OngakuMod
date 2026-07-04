@@ -264,6 +264,10 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             {
                 disc.putString("variant",item.variant());
             }
+            if(item.InstanceId()!=null)
+            {
+                disc.putString("InstanceId",item.variant());
+            }
             queueTag.add(disc);
         }
         //Save Exclusions
@@ -274,6 +278,10 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             if(item.variant()!=null)
             {
                 disc.putString("variant",item.variant());
+            }
+            if(item.InstanceId()!=null)
+            {
+                disc.putString("InstanceId",item.variant());
             }
             exclusionTag.add(disc);
         }
@@ -335,14 +343,14 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         for(int i=0;i<queueTag.size();i++)
         {
             CompoundTag disc = queueTag.getCompound(i);
-            customQueueOrder.add( new DiscIdentity(ResourceLocation.parse(disc.getString("item")),disc.contains("variant")? disc.getString("variant"): null));
+            customQueueOrder.add(new DiscIdentity(ResourceLocation.parse(disc.getString("item")),disc.contains("variant")? disc.getString("variant"): null,disc.contains("InstanceId")? disc.getString("InstanceId"): null));
         }
         excludedTracks.clear();
         ListTag exclusionTag = tag.getList("excludedTracks", 10);
         for(int i=0;i<exclusionTag.size();i++)
         {
             CompoundTag disc = exclusionTag.getCompound(i);
-            excludedTracks.add( new DiscIdentity(ResourceLocation.parse(disc.getString("item")),disc.contains("variant")? disc.getString("variant"): null));
+            excludedTracks.add( new DiscIdentity(ResourceLocation.parse(disc.getString("item")),disc.contains("variant")? disc.getString("variant"): null,disc.contains("InstanceId")? disc.getString("InstanceId"): null));
         }
     }
 
@@ -357,9 +365,9 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             if (playing.isEmpty()) return -1;
 
             List<PlaylistEntry> fullList = PlaylistHelper.buildPlaylist(this); // raw list - matches widget/SyncPlaylistPayload indexing
-            DiscIdentity playingIdentity = DiscIdentityHelper.get(playing);
+            DiscIdentity playingIdentity = getCurrentlyPlayingIdentity();
             for (int i = 0; i < fullList.size(); i++) {
-                if (DiscIdentityHelper.get(fullList.get(i).stack()).equals(playingIdentity)) {
+                if (DiscIdentityHelper.get(fullList.get(i).stack(),fullList.get(i).rackPos(),fullList.get(i).slotIndex()).equals(playingIdentity)) {
                     return i;
                 }
             }
@@ -381,18 +389,25 @@ public class AutoplayControllerBlockEntity extends BlockEntity
     {
         if (currentlyPlayingEntry == null || currentlyPlayingEntry.stack() == null)
             return null;
-        return DiscIdentityHelper.get(currentlyPlayingEntry.stack());
+        return DiscIdentityHelper.get(currentlyPlayingEntry.stack(),currentlyPlayingEntry.rackPos(),currentlyPlayingEntry.slotIndex());
+    }
+    
+    private DiscIdentity resolveIdentity(int playlistIndex) {
+        List<PlaylistEntry> fullList = PlaylistHelper.buildPlaylist(this);
+        if (playlistIndex < 0 || playlistIndex >= fullList.size()) return null;
+        PlaylistEntry entry = fullList.get(playlistIndex);
+        return DiscIdentityHelper.get(entry.stack(), entry.rackPos(), entry.slotIndex());
     }
     public List<DiscIdentity> getCustomQueue() {
         return this.customQueueOrder;
     }
-    public boolean isExcluded(ItemStack stack)
-    {
-        return this.excludedTracks.contains(DiscIdentityHelper.get(stack));
+    public boolean isExcluded(int playlistIndex) {
+        DiscIdentity id = resolveIdentity(playlistIndex);
+        return id != null && this.excludedTracks.contains(id);
     }
-    public int getCustomOrder(ItemStack stack) // atm going unused
-    {
-        return this.customQueueOrder.indexOf(DiscIdentityHelper.get(stack));
+    public int getCustomOrder(int playlistIndex) {
+        DiscIdentity id = resolveIdentity(playlistIndex);
+        return id == null ? -1 : this.customQueueOrder.indexOf(id);
     }
     public long getSongStartTick() {
         return this.songStartTick;
@@ -420,31 +435,24 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
         }
     }
-    public void toggleExclusion(ItemStack item) {
-        DiscIdentity id = DiscIdentityHelper.get(item);
-        if (excludedTracks.contains(id)){
-            excludedTracks.remove(id);
-        }
-        else{
-            excludedTracks.add(id);
-        }
+    public void toggleExclusion(int playlistIndex) {
+        DiscIdentity id = resolveIdentity(playlistIndex);
+        if (id == null) return;
+        if (excludedTracks.contains(id)) excludedTracks.remove(id); else excludedTracks.add(id);
     }
     // used for moving playlist entry in queue, mainly for autoplay purposes
-    public void moveInQueue(ItemStack item, int direction) {
-        DiscIdentity id = DiscIdentityHelper.get(item);
+    public void moveInQueue(int playlistIndex, int direction) {
+        DiscIdentity id = resolveIdentity(playlistIndex);
+        if (id == null) return;
         int index = customQueueOrder.indexOf(id);
-        if(index == -1)
-        {
-            customQueueOrder.add(id);
-            index = customQueueOrder.size() - 1;
-        }
+        if (index == -1) { customQueueOrder.add(id); index = customQueueOrder.size() - 1; }
         int newIndex = index + direction;
-        if(newIndex < 0 || newIndex >= customQueueOrder.size()){ return;}
-        Collections.swap(customQueueOrder,index,newIndex);
+        if (newIndex < 0 || newIndex >= customQueueOrder.size()) return;
+        Collections.swap(customQueueOrder, index, newIndex);
         this.setChanged();
-        if(level != null && !level.isClientSide)
+        if (level != null && !level.isClientSide) 
         {
-            level.sendBlockUpdated(worldPosition,getBlockState(),getBlockState(),3);
+            level.sendBlockUpdated(worldPosition, getBlockState(), getBlockState(), 3);
             PlaylistHelper.broadcastPlaylistUpdate(this);
         }
     }
@@ -549,8 +557,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         while (attempts < fullPlaylist.size()) {
             nextIndex = (nextIndex + 1) % fullPlaylist.size();
             attempts++;
-            ItemStack nextStack = fullPlaylist.get(nextIndex).stack();
-            if (!isExcluded(nextStack) && this.getCustomOrder(nextStack) != startIndex)
+            if (!isExcluded(nextIndex) && this.getCustomOrder(nextIndex) != startIndex)
             {
                 tryPlayDisc(nextIndex);
                 return;

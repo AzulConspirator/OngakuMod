@@ -61,7 +61,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             ItemStack stack = discs.get(i);
             if (stack.isEmpty()) continue;
 
-            DiscIdentity identity = DiscIdentityHelper.get(stack);
+            DiscIdentity identity = DiscIdentityHelper.get(stack, BlockPos.ZERO, i);
             boolean isEtched = LinkHelper.hasComponentByString(stack, "etched:music");
 
             if (isEtched){
@@ -141,7 +141,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int bgRight = x + SpriteWidth;
             int bgBottom = y + SpriteHeight;
  
-            boolean isExcluded = screen.getMenu().getBlockEntity().isExcluded(this.disc);
+            boolean isExcluded = screen.getMenu().getBlockEntity().isExcluded(this.index);
             boolean isSelected = MusicListWidget.this.getSelected() == this;
 
             int mainColor = isExcluded ? 0xFF666666 : 0xFFFFFFFF;
@@ -252,7 +252,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
 
 
         private void sendAction(BlockPos pos, ManagePlaylistPayload.Action action) {
-             PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(pos),Optional.empty() ,Optional.of(this.disc), action, Optional.empty()));
+            PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(pos), Optional.empty(), Optional.empty(), action, Optional.of(this.index)));
         }
 
         @Override
