@@ -92,14 +92,21 @@ public class TerminalBlockItem extends BlockItem {
                 player.displayClientMessage(Component.literal("Terminal is not linked to a controller!"), true);
                 return InteractionResultHolder.fail(stack);
             }
-            GlobalPos Pos = ControllerRegistry.get((ServerLevel)level).get(controllerId);
+            ControllerRegistry CtrlRegistry = ControllerRegistry.get((ServerLevel)level);
+            GlobalPos Pos = CtrlRegistry.get(controllerId);
             if (controllerId != null && Pos != null) 
             {
-                if(!LinkHelper.ControllerExist(controllerId, level, Pos) && level.isLoaded(Pos.pos()))
+                if(CtrlRegistry.isControllerLoaded(level.getServer(), controllerId) && !LinkHelper.ControllerExist(controllerId, level, Pos))
                 {
                     player.displayClientMessage(Component.literal("Controller Missing, Terminal unlinked!"), true);
                     ControllerRegistry.get((ServerLevel)level).unregister(controllerId);
                     ClearNetworkId(stack);
+                    return InteractionResultHolder.fail(stack);
+                }
+                ControllerSnapshot CurrentSnapshot = ControllerRegistry.get((ServerLevel)level).getSnapshot(controllerId); 
+                if (CurrentSnapshot == null )
+                {
+                    player.displayClientMessage(Component.literal("Unable to find Soundbox Snapshot"), true);
                     return InteractionResultHolder.fail(stack);
                 }
                 serverPlayer.openMenu(new MenuProvider() 
@@ -121,7 +128,7 @@ public class TerminalBlockItem extends BlockItem {
                     if (currentSnapshot != null) {
                         buf.writeBoolean(true);
                         currentSnapshot.write(buf);
-                        buf.writeBoolean(serverPlayer.serverLevel().isLoaded(currentSnapshot.pos()));
+                        buf.writeBoolean(CtrlRegistry.isControllerLoaded(serverPlayer.server, controllerId));
                     } else {
                         buf.writeBoolean(false);
                     }

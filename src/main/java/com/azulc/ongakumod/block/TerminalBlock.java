@@ -164,14 +164,21 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
             {
                 UUID controllerId = terminal.getNetworkId();
                 if (controllerId != null && pos != null) 
-                {
-                    GlobalPos GlobePos = ControllerRegistry.get((ServerLevel)level).get(controllerId);
-                    if(!LinkHelper.ControllerExist(controllerId, level, GlobePos))
+                {            
+                    ControllerRegistry CtrlRegistry = ControllerRegistry.get((ServerLevel)level);
+                    GlobalPos GlobePos = CtrlRegistry.get(controllerId);
+                    if(CtrlRegistry.isControllerLoaded(level.getServer(), controllerId) && !LinkHelper.ControllerExist(controllerId, level, GlobePos))
                     {
                         player.displayClientMessage(Component.literal("Controller Missing, unlinking Terminal"), true);
                         ControllerRegistry.get((ServerLevel)level).unregister(controllerId);
                         terminal.ClearNetworkId();
                         return  InteractionResult.FAIL;
+                    }
+                    ControllerSnapshot CurrentSnapshot = ControllerRegistry.get((ServerLevel)level).getSnapshot(controllerId); 
+                    if (CurrentSnapshot == null )
+                    {
+                        player.displayClientMessage(Component.literal("Unable to find Soundbox Snapshot"), true);
+                        return InteractionResult.FAIL;
                     }
                     serverPlayer.openMenu(new SimpleMenuProvider(
                     (id, inv, p) -> new TerminalMenu(id, inv, terminal,true), 
@@ -185,7 +192,7 @@ public class TerminalBlock extends HorizontalDirectionalBlock implements EntityB
                         {
                             buf.writeBoolean(true);
                             currentSnapshot.write(buf);
-                            buf.writeBoolean(serverPlayer.serverLevel().isLoaded(currentSnapshot.pos()));
+                            buf.writeBoolean(CtrlRegistry.isControllerLoaded(serverPlayer.server, controllerId));
                         }
                         else
                         {

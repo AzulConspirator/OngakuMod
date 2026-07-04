@@ -157,6 +157,19 @@ public class AutoplayControllerBlockEntity extends BlockEntity
                 entity.validateAndProcess(level, pos);
             }
             if (level instanceof ServerLevel serverLevel) {
+                ControllerRegistry registry = ControllerRegistry.get(serverLevel);
+                UUID id = getNetworkId(entity);
+                // If we're not actively playing anything ourselves right now, adopt whatever
+                // a linked terminal may have set via the offline/virtual path while we were
+                // idle - otherwise our own stale -1/null defaults below stomp it straight back.
+                if (entity.currentlyPlayingEntry == null && entity.songStartTick == -1)
+                {
+                    ControllerSnapshot remote = registry.getSnapshot(id);
+                    if (remote != null) {
+                        entity.currentPlaylistIndex = remote.playlistIndex();
+                        entity.autoplayEnabled = remote.autoplay();
+                    }
+                }
                 ControllerRegistry.get(serverLevel).updateSnapshot(getNetworkId(entity), createSnapshot(entity));
             }
         }

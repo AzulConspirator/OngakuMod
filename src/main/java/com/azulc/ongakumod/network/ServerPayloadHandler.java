@@ -2,6 +2,7 @@ package com.azulc.ongakumod.network;
 
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.container.TerminalMenu;
+import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.PlaylistHelper;
 
@@ -40,11 +41,22 @@ public class ServerPayloadHandler {
         context.enqueueWork(() -> {
             if (!(context.player() instanceof ServerPlayer player)) return;
             ServerLevel level = player.serverLevel();
-            ControllerSnapshot freshSnapshot = TerminalControlHandler.processTerminalCommand(level,payload.controllerUuid(),level.isLoaded(payload.targetControllerPos()),payload.targetControllerPos(), payload.actionId(),payload.playlistIndex(),player,payload.isBlockMode(),payload.terminalBlockPos());
-            boolean isLoaded = freshSnapshot != null && level.isLoaded(freshSnapshot.pos());
+            ControllerRegistry registry = ControllerRegistry.get(level);
+            boolean isLoaded = registry.isControllerLoaded(player.server, payload.controllerUuid());
+            // Use the controller's own dimension when it's actually loaded, so getBlockEntity()
+            // in the online path looks in the right world instead of wherever the player is standing.
+            ServerLevel controllerLevel = isLoaded
+                ? registry.resolveControllerLevel(player.server, payload.controllerUuid())
+                : level;
+
+            ControllerSnapshot freshSnapshot = TerminalControlHandler.processTerminalCommand(
+                controllerLevel, payload.controllerUuid(), isLoaded, payload.targetControllerPos(),
+                payload.actionId(), payload.playlistIndex(), player, payload.isBlockMode(), payload.terminalBlockPos());
+
+            boolean freshIsLoaded = freshSnapshot != null && registry.isControllerLoaded(player.server, payload.controllerUuid());
             if (freshSnapshot != null && player.containerMenu instanceof TerminalMenu terminalMenu) {
                 if (terminalMenu.getNetworkId().equals(payload.controllerUuid())) {
-                    context.reply(new TerminalUpdatePayload(freshSnapshot, isLoaded));
+                    context.reply(new TerminalUpdatePayload(freshSnapshot, freshIsLoaded));
                 }
             }
         });

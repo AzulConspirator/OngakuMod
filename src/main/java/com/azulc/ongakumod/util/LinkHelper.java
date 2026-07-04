@@ -163,19 +163,16 @@ public class LinkHelper {
     }
 
     //#endregion
-    public static boolean ControllerExist(UUID UUIDgiven, Level level,GlobalPos BE)
+    public static boolean ControllerExist(UUID UUIDgiven, Level level, GlobalPos BE)
     {
-        if (UUIDgiven == null || level ==null || BE ==null) {return false;}
-        if (level.isLoaded(BE.pos()))
-        {
-            BlockEntity ctrl = level.getBlockEntity(BE.pos());
-            if (ctrl instanceof AutoplayControllerBlockEntity controller) 
-            {
-                if (AutoplayControllerBlockEntity.getNetworkId(controller).equals(UUIDgiven))
-                {
-                    return true;
-                }
-            }
+        if (UUIDgiven == null || level == null || BE == null) {return false;}
+        net.minecraft.server.MinecraftServer server = level.getServer();
+        if (server == null) {return false;}
+        ServerLevel controllerLevel = server.getLevel(BE.dimension());
+        if (controllerLevel == null || !controllerLevel.isLoaded(BE.pos())) {return false;}
+        BlockEntity ctrl = controllerLevel.getBlockEntity(BE.pos());
+        if (ctrl instanceof AutoplayControllerBlockEntity controller) {
+            return AutoplayControllerBlockEntity.getNetworkId(controller).equals(UUIDgiven);
         }
         return false;
     }

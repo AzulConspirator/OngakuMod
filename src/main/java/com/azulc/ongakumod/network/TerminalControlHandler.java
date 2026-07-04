@@ -1,5 +1,6 @@
 package com.azulc.ongakumod.network;
 
+import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.util.ControllerRegistry;
 import com.azulc.ongakumod.util.LinkHelper;
@@ -103,10 +104,11 @@ public class TerminalControlHandler {
             {
                 apEnabled = false;
                 startTick = -1;
-                broadcastToTerminalOffline(player, controllerUuid,Optional.of(currentDisc), true, isBlockMode, terminalBlockPos);
+                broadcastToTerminalOffline(player, controllerUuid,Optional.empty(), true, isBlockMode, terminalBlockPos);
             }
             case ACTION_PLAY_TRACK -> 
             {
+               OngakuMod.LOGGER.info("track index : {},{}",trackIndex,currentDisc);
                 if (trackIndex < 0 || trackIndex >= playlist.size()) {
                     trackIndex = 0;
                 } else {
@@ -114,6 +116,7 @@ public class TerminalControlHandler {
                 }
                 
                 currentDisc = playlist.get(trackIndex);
+                OngakuMod.LOGGER.info("new track index : {},{}",trackIndex,currentDisc);
                 startTick = level.getGameTime();
                 if (currentDisc != null || LinkHelper.hasComponentByString(currentDisc, "etched:music")) {
                     broadcastToTerminalOffline(player, controllerUuid, Optional.of(currentDisc), false, isBlockMode, terminalBlockPos);

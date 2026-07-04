@@ -19,6 +19,7 @@ import net.minecraft.nbt.Tag;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.saveddata.SavedData;
@@ -128,6 +129,20 @@ public class ControllerRegistry extends SavedData {
 
     public GlobalPos get(UUID id) {
         return controllers.get(id);
+    }
+
+    public boolean isControllerLoaded(MinecraftServer server, UUID controllerId) {
+        GlobalPos globalPos = controllers.get(controllerId);
+        if (globalPos == null) return false;
+        ServerLevel dimLevel = server.getLevel(globalPos.dimension());
+        return dimLevel != null && dimLevel.isLoaded(globalPos.pos());
+    }
+
+    @Nullable
+    public ServerLevel resolveControllerLevel(MinecraftServer server, UUID controllerId) {
+        GlobalPos globalPos = controllers.get(controllerId);
+        if (globalPos == null) return null;
+        return server.getLevel(globalPos.dimension());
     }
 
     public void updateSnapshot(UUID id, ControllerSnapshot snapshot) {

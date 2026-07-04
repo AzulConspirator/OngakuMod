@@ -57,8 +57,9 @@ public class TerminalMenu extends AbstractContainerMenu {
         this.terminalBlockPos = Optional.empty();
         this.isBlockMode = isBlockMode;
         if (inv.player.level() instanceof ServerLevel serverLevel) { 
-            this.snapshot = ControllerRegistry.get(serverLevel).getSnapshot(controllerId); 
-            this.isControllerLoaded = this.snapshot != null && serverLevel.isLoaded(this.snapshot.pos());
+            ControllerRegistry registry = ControllerRegistry.get(serverLevel);
+            this.snapshot = registry.getSnapshot(controllerId); 
+            this.isControllerLoaded = registry.isControllerLoaded(serverLevel.getServer(), controllerId);
         } else {
             this.snapshot = null; 
         }
@@ -72,8 +73,9 @@ public class TerminalMenu extends AbstractContainerMenu {
         this.terminalBlockPos = Optional.of(terminal.getBlockPos());
         this.isBlockMode = isBlockMode;
         if (inv.player.level() instanceof ServerLevel serverLevel && this.networkId != null) { 
-            this.snapshot = ControllerRegistry.get(serverLevel).getSnapshot(this.networkId); 
-            this.isControllerLoaded = this.snapshot != null && serverLevel.isLoaded(this.snapshot.pos());
+            ControllerRegistry registry = ControllerRegistry.get(serverLevel);
+            this.snapshot = registry.getSnapshot(this.networkId); 
+            this.isControllerLoaded = registry.isControllerLoaded(serverLevel.getServer(), this.networkId);
         } else {
             this.snapshot = null;
         }
