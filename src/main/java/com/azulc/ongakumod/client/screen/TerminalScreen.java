@@ -7,6 +7,7 @@ import com.azulc.ongakumod.network.TerminalControlHandler;
 import com.azulc.ongakumod.util.UIHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 
+import net.minecraft.Util;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.core.BlockPos;
@@ -45,20 +46,35 @@ public class TerminalScreen extends AbstractContainerScreen<TerminalMenu>
         int spacing = 21;
         int iconSize = 20;
         this.addRenderableWidget(
-            new UIHelper.IconButton(startX, startY, iconSize, iconSize, UIHelper.ICON_STOP, Component.translatable("general.ongakumod.stop"),b -> sendAction( TerminalControlHandler.ACTION_STOP,0,this.menu.IsblockMode()))
-        );
+            new UIHelper.IconButton(startX, startY, iconSize, iconSize, 
+            UIHelper.ICON_STOP, Component.translatable("general.ongakumod.stop"),
+            b -> {
+                if (Util.getMillis() - this.lastActionTime < UIHelper.COOLDOWN_MS) return;
+                this.lastActionTime = Util.getMillis();
+                sendAction( TerminalControlHandler.ACTION_STOP,0,this.menu.IsblockMode());
+            })
+            .withCooldown(() -> UIHelper.cooldownProgress(this.lastActionTime)));
         this.addRenderableWidget(
-            new UIHelper.IconButton(startX + (spacing), startY, iconSize, iconSize, UIHelper.ICON_PLAY, Component.literal(Component.translatable("general.ongakumod.play").getString()+" / "+Component.translatable("general.ongakumod.skip").getString()),b -> sendAction(TerminalControlHandler.ACTION_PLAY_TRACK,this.menu.getSnapshot().playlistIndex(),this.menu.IsblockMode()))
-        );
+            new UIHelper.IconButton(startX + (spacing), startY, iconSize, iconSize, 
+            UIHelper.ICON_PLAY, Component.literal(Component.translatable("general.ongakumod.play").getString()+" / "+Component.translatable("general.ongakumod.skip").getString()),
+            b -> {
+                if (Util.getMillis() - this.lastActionTime < UIHelper.COOLDOWN_MS) return;
+                this.lastActionTime = Util.getMillis();
+                sendAction(TerminalControlHandler.ACTION_PLAY_TRACK,this.menu.getSnapshot().playlistIndex(),this.menu.IsblockMode());
+            })
+            .withCooldown(() -> UIHelper.cooldownProgress(this.lastActionTime)));
         this.addRenderableWidget(
-            new UIHelper.IconButton(startX + (spacing * 2), startY, iconSize, iconSize, UIHelper.ICON_AUTOPLAY,() -> this.menu.getSnapshot() != null&& this.menu.getSnapshot().autoplay(), Component.translatable("general.ongakumod.autoplay"), b -> sendAction(TerminalControlHandler.ACTION_TOGGLE_AP,0,this.menu.IsblockMode()))
-        );
+            new UIHelper.IconButton(startX + (spacing * 2), startY, iconSize, iconSize, 
+            UIHelper.ICON_AUTOPLAY,() -> this.menu.getSnapshot() != null&& this.menu.getSnapshot().autoplay(), Component.translatable("general.ongakumod.autoplay"),
+            b -> {
+                if (Util.getMillis() - this.lastActionTime < UIHelper.COOLDOWN_MS) return;
+                this.lastActionTime = Util.getMillis();
+                sendAction(TerminalControlHandler.ACTION_TOGGLE_AP,0,this.menu.IsblockMode());
+            })
+            .withCooldown(() -> UIHelper.cooldownProgress(this.lastActionTime)));
     }
     private void sendAction(int action, int index, boolean isBlockMode)
     {
-        long now = net.minecraft.Util.getMillis();
-        if (now - this.lastActionTime < 250) return;
-        this.lastActionTime = now;
         this.snapshot = this.menu.getSnapshot();
         BlockPos targetPos = this.snapshot != null ? this.snapshot.pos() : BlockPos.ZERO;
         Optional<BlockPos> blockPosOpt = Optional.ofNullable(this.menu.getTerminalBlockPos()).flatMap(opt -> opt);

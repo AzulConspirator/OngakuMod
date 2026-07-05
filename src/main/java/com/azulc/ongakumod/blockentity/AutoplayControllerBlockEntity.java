@@ -261,11 +261,11 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             this.songDurationTicks = 0;
             this.setChanged();
         }
-        if (newStatus != 2)
-        {
-            LinkHelper.broadcastToSpeakers(this,false, null);
-        }
         if (this.cachedStatus != newStatus) {
+            if (newStatus != 2)
+            {
+                LinkHelper.broadcastToSpeakers(this,false, null);
+            }
             this.data.set(2,newStatus);
             this.setChanged();
             if (level instanceof ServerLevel) {

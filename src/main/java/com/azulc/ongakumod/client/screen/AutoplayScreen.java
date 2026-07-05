@@ -80,42 +80,42 @@ public class AutoplayScreen extends AbstractContainerScreen<AutoplayMenu>
         this.addRenderableWidget(
             new UIHelper.IconButton(startX, startY, iconSize, iconSize, UIHelper.ICON_STOP, 
             Component.translatable("general.ongakumod.stop"), (b) -> {
-                if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
+                if (Util.getMillis() - this.lastActionTime < UIHelper.COOLDOWN_MS) return;
                 this.lastActionTime = Util.getMillis();
                 PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.STOP,Optional.empty()));
                 this.musicList.refreshList(this.menu.getSyncedDiscs());
-            }));
+            }).withCooldown(() -> UIHelper.cooldownProgress(this.lastActionTime)));
 
         // 2. PLAY
         this.addRenderableWidget(
             new UIHelper.IconButton(startX + spacing, startY, iconSize, iconSize, UIHelper.ICON_PLAY, 
             Component.translatable("general.ongakumod.play"), (b) -> {
-            if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
+            if (Util.getMillis() - this.lastActionTime < UIHelper.COOLDOWN_MS) return;
             this.lastActionTime = Util.getMillis();
             MusicListWidget.MusicEntry selected = this.musicList.getSelected();
             if (selected != null) {
                 this.setSelectedDisc(selected.index); 
                 this.musicList.refreshList(this.menu.getSyncedDiscs());
             }
-        }));
+        }).withCooldown(() -> UIHelper.cooldownProgress(this.lastActionTime)));
         // 3. SKIP
         this.addRenderableWidget(
             new UIHelper.IconButton(startX + (spacing * 2), startY, iconSize, iconSize, UIHelper.ICON_SKIP, 
             Component.translatable("general.ongakumod.skip"), (b) -> {
-            if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
+            if (Util.getMillis() - this.lastActionTime < UIHelper.COOLDOWN_MS) return;
             this.lastActionTime = Util.getMillis();
             PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.SKIP,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
-        }));
+        }).withCooldown(() -> UIHelper.cooldownProgress(this.lastActionTime)));
 
         // 4. AUTOPLAY (Indicator in corner)
         this.addRenderableWidget(new UIHelper.IconButton(startX + (spacing * 3), startY, iconSize, iconSize, UIHelper.ICON_AUTOPLAY, () -> this.menu.getData().get(3) == 1, 
             Component.translatable("general.ongakumod.autoplay"), (b) -> {
-            if (Util.getMillis() - this.lastActionTime < 250) return; // Cooldown check
+            if (Util.getMillis() - this.lastActionTime < UIHelper.COOLDOWN_MS) return;
             this.lastActionTime = Util.getMillis();
             PacketDistributor.sendToServer(new ManagePlaylistPayload(Optional.of(this.menu.getBlockPos()),Optional.empty(), Optional.empty(), ManagePlaylistPayload.Action.TOGGLE_AUTOPLAY,Optional.empty()));
             this.musicList.refreshList(this.menu.getSyncedDiscs());
-        }));
+        }).withCooldown(() -> UIHelper.cooldownProgress(this.lastActionTime)));
     }
 
     public AutoplayMenu getMenu() 

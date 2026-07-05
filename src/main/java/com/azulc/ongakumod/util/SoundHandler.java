@@ -3,12 +3,14 @@ package com.azulc.ongakumod.util;
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.compat.EtchedBridge;
 
+import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.resources.sounds.EntityBoundSoundInstance;
 import net.minecraft.client.resources.sounds.SimpleSoundInstance;
 import net.minecraft.client.resources.sounds.SoundInstance;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
@@ -29,24 +31,43 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 @EventBusSubscriber(modid = OngakuMod.MODID, value = Dist.CLIENT)
-public class SoundHandler 
+public class SoundHandler
 {
     private static final int SOUND_STOP_CHECK_INTERVAL = 10;
-    private static final Map<UUID, SoundInstance> activeTerminalSounds = new ConcurrentHashMap<>();
+    private static final long MIN_REPLAY_INTERVAL_MS = 150L;
+    private record SoundKey(UUID controllerId, Optional<BlockPos> pos) {}
+    private record PlaybackRecord(ResourceLocation soundLocation, long startedAtMs) {}
+
+    private static final Map<SoundKey, SoundInstance> activeTerminalSounds = new ConcurrentHashMap<>();
+    private static final Map<SoundKey, PlaybackRecord> lastPlayback = new ConcurrentHashMap<>();
     private static long lastPlaybackChecked = 0;
 
     private SoundHandler() {}
 
-    public static void playSound(UUID controllerId, SoundInstance sound) {
-        stopSound(controllerId);
-        activeTerminalSounds.put(controllerId, sound);
+    private static void playSound(SoundKey key, SoundInstance sound) {
+        long now = Util.getMillis();
+        PlaybackRecord last = lastPlayback.get(key);
+
+        // #4: if this exact key+track was just (re)started a moment ago, treat this
+        // as a duplicate burst (e.g. multiple speakers updating in the same tick,
+        // or a resend) rather than a genuine new play request.
+        if (last != null && last.soundLocation().equals(sound.getLocation()) && now - last.startedAtMs() < MIN_REPLAY_INTERVAL_MS) { return; }
+        stopSound(key);
+        activeTerminalSounds.put(key, sound);
+        lastPlayback.put(key, new PlaybackRecord(sound.getLocation(), now));
         Minecraft.getInstance().getSoundManager().play(sound);
     }
 
-    public static void stopSound(UUID controllerId) {
-        if (activeTerminalSounds.containsKey(controllerId)) {
-            Minecraft.getInstance().getSoundManager().stop(activeTerminalSounds.remove(controllerId));
+    private static void stopSound(SoundKey key) {
+        SoundInstance existing = activeTerminalSounds.remove(key);
+        if (existing != null) {
+            Minecraft.getInstance().getSoundManager().stop(existing);
         }
+    }
+
+    // Public stop entry point used from ClientPayloadHandler.
+    public static void stopSound(UUID controllerId, Optional<BlockPos> pos) {
+        stopSound(new SoundKey(controllerId, pos));
     }
 
     // --- MODE 1: BLOCK MODE (Static Position Attenuation) ---
@@ -57,27 +78,27 @@ public class SoundHandler
         if (!disc.isEmpty()) {
             soundEvent = getSoundFromDiscId(Minecraft.getInstance().level, disc);
         }
-        if (OngakuMod.IS_ETCHED_LOADED && Disc.isPresent()) {
+        SoundKey key = new SoundKey(controllerId, Optional.of(pos));
+        if (OngakuMod.IS_ETCHED_LOADED && LinkHelper.hasComponentByString(disc, "etched:music")) {
             ItemStack stack = Disc.get();
             if (EtchedBridge.hasEtchedMusic(stack)) {
-                OngakuMod.LOGGER.info("[TerminalBlock] Retrieving Etched Audio");
-                EtchedBridge.createEtchedBlockSound(pos, stack, Minecraft.getInstance().level).ifPresent(sound -> playSound(controllerId, sound));
+                EtchedBridge.createEtchedBlockSound(pos, stack, Minecraft.getInstance().level).ifPresent(sound -> playSound(key, sound));
                 return;
             }
         }
-        
-        playSound(controllerId, SimpleSoundInstance.forJukeboxSong(soundEvent, Vec3.atCenterOf(pos)));
+        playSound(key, SimpleSoundInstance.forJukeboxSong(soundEvent, Vec3.atCenterOf(pos)));
     }
 
     // --- MODE 2: ITEM MODE / MP3 MODE (Entity-Bound Attenuation) ---
     public static void playItemModeSound(UUID controllerId, Optional<ItemStack> Disc, int entityId) {
         ClientLevel level = Minecraft.getInstance().level;
-        
+
         if (level == null) return;
 
         Entity entity = level.getEntity(entityId);
+        SoundKey key = new SoundKey(controllerId, Optional.empty());
         if (entity == null) {
-            stopSound(controllerId);
+            stopSound(key);
             return;
         }
         ItemStack disc = Disc.orElse(ItemStack.EMPTY);
@@ -86,18 +107,17 @@ public class SoundHandler
         if (!disc.isEmpty()) {
             soundEvent = getSoundFromDiscId(Minecraft.getInstance().level, disc);
         }
-        if (OngakuMod.IS_ETCHED_LOADED && Disc.isPresent()) {
+        if (OngakuMod.IS_ETCHED_LOADED && LinkHelper.hasComponentByString(disc, "etched:music")) {
             ItemStack stack = Disc.get();
             if (EtchedBridge.hasEtchedMusic(stack)) {
-                OngakuMod.LOGGER.info("[Terminal] Retrieving Etched Audio");
-                EtchedBridge.createEtchedEntitySound(entity, stack).ifPresent(sound -> playSound(controllerId, sound));
+                EtchedBridge.createEtchedEntitySound(entity, stack).ifPresent(sound -> playSound(key, sound));
                 return;
             }
         }
-        playSound(controllerId, new EntityBoundSoundInstance(soundEvent, SoundSource.RECORDS, 1.0F, 1.0F, entity, level.random.nextLong()) 
+        playSound(key, new EntityBoundSoundInstance(soundEvent, SoundSource.RECORDS, 1.0F, 1.0F, entity, level.random.nextLong())
         {
             @Override
-            public void tick() 
+            public void tick()
             {
                 super.tick();
                 if (entity instanceof Player player) {
@@ -125,11 +145,12 @@ public class SoundHandler
     public static void onWorldUnload(LevelEvent.Unload event) {
         if (event.getLevel().isClientSide()) {
             activeTerminalSounds.clear();
+            lastPlayback.clear();
             lastPlaybackChecked = 0;
         }
     }
-    
-    public static SoundEvent getSoundFromDiscId(Level level, ItemStack discId) 
+
+    public static SoundEvent getSoundFromDiscId(Level level, ItemStack discId)
     {
         if (discId == null || discId.isEmpty()) {return null;}
         return JukeboxSong.fromStack(level.registryAccess(), discId).map(holder -> holder.value().soundEvent().value()).orElse(null);

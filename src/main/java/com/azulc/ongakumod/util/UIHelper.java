@@ -9,6 +9,7 @@ import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.Tooltip;
 import net.minecraft.network.chat.Component;
 import java.util.function.BooleanSupplier;
+import java.util.function.Supplier;
 
 public class UIHelper 
 {
@@ -28,6 +29,7 @@ public class UIHelper
     public static final int ICON_INCLUDE = 7;
     public static final int ICON_PREV_TRACK = 9;
     public static final int ICON_NEXT_TRACK = 1;
+    public static final long COOLDOWN_MS = 1000;
 
     public static void DrawIcon(GuiGraphics graphics, int x, int y, int renderSize, int iconIndex) {
         int u = (iconIndex % ICON_SHEET_COLUMNS) * ICON_SIZE;
@@ -109,9 +111,15 @@ public class UIHelper
         graphics.disableScissor();
     }
 
+    
+    public static float cooldownProgress(Long lastActionTime) {
+        return (Util.getMillis() - lastActionTime) / (float) COOLDOWN_MS;
+    }
+
     public static class IconButton extends Button {
         protected final int iconIndex;
         protected final BooleanSupplier activeStateSupplier;
+        protected Supplier<Float> cooldownProgressSupplier;
 
         public IconButton(int x, int y, int width, int height, int iconIndex, Component tooltip, OnPress onPress) {
             this(x, y, width, height, iconIndex, null, tooltip, onPress);
@@ -123,6 +131,11 @@ public class UIHelper
             if (tooltip != null) {
                 this.setTooltip(Tooltip.create(tooltip));
             }
+        }
+
+        public IconButton withCooldown(Supplier<Float> cooldownProgressSupplier) {
+            this.cooldownProgressSupplier = cooldownProgressSupplier;
+            return this;
         }
  
         @Override
@@ -137,6 +150,14 @@ public class UIHelper
             if (this.activeStateSupplier != null && this.activeStateSupplier.getAsBoolean()) {
                 graphics.fill(this.getX() + this.width - 5, this.getY() + 1, this.getX() + this.width - 1, this.getY() + 5, 0xFF55FF55);
             }
+
+            if (this.cooldownProgressSupplier != null) {
+            float progress = Math.max(0f, Math.min(1f, this.cooldownProgressSupplier.get()));
+            if (progress < 1f) {
+                int overlayTop = this.getY() + Math.round(progress * this.height);
+                graphics.fill(this.getX(), overlayTop, this.getX() + this.width, this.getY() + this.height, 0x55FFFFFF);
+            }
+        }
         }
     }
 }

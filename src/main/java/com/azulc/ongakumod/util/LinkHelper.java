@@ -126,11 +126,11 @@ public class LinkHelper {
 
     public static void removeLinkedSpeaker(AutoplayControllerBlockEntity Controller,BlockPos speakerPos) {
         boolean removed = Controller.getLinkedSpeakerPositions().remove(speakerPos);
-        if (Controller.getLevel().getBlockEntity(speakerPos) instanceof SpeakerBlockEntity rack) {
-            if (Controller.getBlockPos().equals(rack.getControllerPos())) {
-                rack.setControllerPos(null);
-                rack.setChanged();
-                Controller.getLevel().sendBlockUpdated(speakerPos, rack.getBlockState(), rack.getBlockState(), 3);
+        if (Controller.getLevel().getBlockEntity(speakerPos) instanceof SpeakerBlockEntity speaker) {
+            if (Controller.getBlockPos().equals(speaker.getControllerPos())) {
+                speaker.setControllerPos(null);
+                speaker.setChanged();
+                Controller.getLevel().sendBlockUpdated(speakerPos, speaker.getBlockState(), speaker.getBlockState(), 3);
             }
         }
         if (removed) {
