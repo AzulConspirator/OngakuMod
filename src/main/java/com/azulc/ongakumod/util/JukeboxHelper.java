@@ -59,7 +59,7 @@ public class JukeboxHelper
         Level level = Controller.getLevel();
         BlockState state = level.getBlockState(pos);
         level.levelEvent(1011, pos, 0); 
-        //jukebox.getSongPlayer().stop(level, state);
+        jukebox.getSongPlayer().stop(level, state);
         ItemStack existing = jukebox.getTheItem();
         if (!existing.isEmpty()) {
             returnDiscToRack(Controller, existing);
@@ -67,7 +67,6 @@ public class JukeboxHelper
         jukebox.setTheItem(ItemStack.EMPTY);
         BlockState newState = state.setValue(JukeboxBlock.HAS_RECORD, false);
         level.setBlock(pos,newState,3);
-
         level.gameEvent(GameEvent.BLOCK_CHANGE,pos,GameEvent.Context.of(newState));
         level.sendBlockUpdated(pos,state,newState,3);
         Controller.currentPlaylistIndex = -1;
