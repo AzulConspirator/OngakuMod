@@ -3,6 +3,7 @@ package com.azulc.ongakumod.network;
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.util.ControllerRegistry;
+import com.azulc.ongakumod.util.CtrlHelper;
 import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 
@@ -60,7 +61,7 @@ public class TerminalControlHandler {
         switch (actionId) 
         {
             case ACTION_STOP -> {
-                controller.StopJukebox();
+                CtrlHelper.StopJukebox(controller);
                 broadcastToTerminalOffline(player, networkId,Optional.empty(),  true, isBlockMode, terminalBlockPos);
             }
             case ACTION_PLAY_TRACK -> {
@@ -72,7 +73,7 @@ public class TerminalControlHandler {
                     }
                 }
             }
-            case ACTION_TOGGLE_AP -> controller.toggleAutoplay();
+            case ACTION_TOGGLE_AP -> CtrlHelper.toggleAutoplay(controller);
             default -> throw new IllegalArgumentException("Unknown local action ID: " + actionId);
         }
         // no need for case for ACTION_SKIP due to terminal combines Play n Skip

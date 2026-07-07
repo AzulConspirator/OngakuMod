@@ -39,30 +39,30 @@ import java.util.UUID;
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.network.TerminalControlHandler;
 import com.azulc.ongakumod.util.ControllerRegistry;
+import com.azulc.ongakumod.util.CtrlHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.JukeboxHelper;
 import com.azulc.ongakumod.util.LinkHelper;
 import com.azulc.ongakumod.util.PlaylistHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
-import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.PlaylistEntry;
 
 public class AutoplayControllerBlockEntity extends BlockEntity 
 {
     private UUID networkId = UUID.randomUUID();
-    private int tickCounter = 0;
-    private int ticksSinceLoad = 0;
+    public int tickCounter = 0;
+    public int ticksSinceLoad = 0;
     public PlaylistEntry currentlyPlayingEntry = null;
     public int currentPlaylistIndex = -1;
-    private long songStartTick = -1;
-    private int songDurationTicks = 0;
-    private boolean autoplayEnabled = false;
+    public long songStartTick = -1;
+    public int songDurationTicks = 0;
+    public boolean autoplayEnabled = false;
     public int cachedStatus = 0;
     public BlockPos JukeboxPosition;
-    private final Set<BlockPos> linkedRackPositions = new LinkedHashSet<>();
-    private final Set<BlockPos> linkedSpeakers = new LinkedHashSet<>();
-    private final List<DiscIdentity> customQueueOrder = new ArrayList<>();
-    private final Set<DiscIdentity> excludedTracks = new HashSet<>();
+    public final Set<BlockPos> linkedRackPositions = new LinkedHashSet<>();
+    public final Set<BlockPos> linkedSpeakers = new LinkedHashSet<>();
+    public final List<DiscIdentity> customQueueOrder = new ArrayList<>();
+    public final Set<DiscIdentity> excludedTracks = new HashSet<>();
 
     public AutoplayControllerBlockEntity(BlockPos pos, BlockState state) 
     {
@@ -77,7 +77,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             return switch (index) 
             {
                 case 0 -> linkedRackPositions.isEmpty() ? 0 : 1;
-                case 1 -> GetCurrentPlayingIndex();
+                case 1 -> CtrlHelper.GetCurrentPlayingIndex(AutoplayControllerBlockEntity.this);
                 case 2 -> JukeboxHelper.CheckJukeStatus(AutoplayControllerBlockEntity.this, JukeboxHelper.findJukebox(AutoplayControllerBlockEntity.this));
                 case 3 -> autoplayEnabled ? 1 : 0;
                 case 4 -> (int)(level.getGameTime() - songStartTick);
@@ -159,9 +159,6 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             if (level instanceof ServerLevel serverLevel) {
                 ControllerRegistry registry = ControllerRegistry.get(serverLevel);
                 UUID id = getNetworkId(entity);
-                // If we're not actively playing anything ourselves right now, adopt whatever
-                // a linked terminal may have set via the offline/virtual path while we were
-                // idle - otherwise our own stale -1/null defaults below stomp it straight back.
                 if (entity.currentlyPlayingEntry == null && entity.songStartTick == -1)
                 {
                     ControllerSnapshot remote = registry.getSnapshot(id);
@@ -382,27 +379,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
             excludedTracks.add( new DiscIdentity(ResourceLocation.parse(disc.getString("item")),disc.contains("variant")? disc.getString("variant"): null,disc.contains("InstanceId")? disc.getString("InstanceId"): null));
         }
     }
-
-    //#endregion
-    //#region Helpers
-    public int GetCurrentPlayingIndex()
-    {
-        BlockPos jukePos = JukeboxHelper.findJukebox(this);
-        if (jukePos == null) return -1;
-        if (level.getBlockEntity(jukePos) instanceof JukeboxBlockEntity jukebox) {
-            ItemStack playing = jukebox.getTheItem();
-            if (playing.isEmpty()) return -1;
-
-            List<PlaylistEntry> fullList = PlaylistHelper.buildPlaylist(this); // raw list - matches widget/SyncPlaylistPayload indexing
-            DiscIdentity playingIdentity = getCurrentlyPlayingIdentity();
-            for (int i = 0; i < fullList.size(); i++) {
-                if (DiscIdentityHelper.get(fullList.get(i).stack(),fullList.get(i).rackPos(),fullList.get(i).slotIndex()).equals(playingIdentity)) {
-                    return i;
-                }
-            }
-        }
-        return -1;
-    }
+    ////#region
     public static UUID getNetworkId(AutoplayControllerBlockEntity Ctrl)
     {
         if (Ctrl.networkId == null) 
@@ -414,64 +391,15 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         Ctrl.setChanged();
         return Ctrl.networkId;
     }
-    public DiscIdentity getCurrentlyPlayingIdentity()
+    public BlockPos getworldposition ()
     {
-        if (currentlyPlayingEntry == null || currentlyPlayingEntry.stack() == null)
-            return null;
-        return DiscIdentityHelper.get(currentlyPlayingEntry.stack(),currentlyPlayingEntry.rackPos(),currentlyPlayingEntry.slotIndex());
-    }
-    
-    private DiscIdentity resolveIdentity(int playlistIndex) {
-        List<PlaylistEntry> fullList = PlaylistHelper.buildPlaylist(this);
-        if (playlistIndex < 0 || playlistIndex >= fullList.size()) return null;
-        PlaylistEntry entry = fullList.get(playlistIndex);
-        return DiscIdentityHelper.get(entry.stack(), entry.rackPos(), entry.slotIndex());
-    }
-    public List<DiscIdentity> getCustomQueue() {
-        return this.customQueueOrder;
-    }
-    public boolean isExcluded(int playlistIndex) {
-        DiscIdentity id = resolveIdentity(playlistIndex);
-        return id != null && this.excludedTracks.contains(id);
-    }
-    public int getCustomOrder(int playlistIndex) {
-        DiscIdentity id = resolveIdentity(playlistIndex);
-        return id == null ? -1 : this.customQueueOrder.indexOf(id);
-    }
-    public long getSongStartTick() {
-        return this.songStartTick;
-    }
-    public int getSongDurationTicks() {
-        return this.songDurationTicks;
-    }
-    public Set<BlockPos> getLinkedRackPositions() {
-        return this.linkedRackPositions;
-    }
-    public Set<BlockPos> getLinkedSpeakerPositions() {
-        return this.linkedSpeakers;
-    }
-    public void StopJukebox() {
-        if (this.level == null || this.level.isClientSide) return;
-        this.autoplayEnabled = false;
-        this.stopAndReturnDisc();
+        return this.worldPosition;
     }
     //#endregion
-    //#region Playlist Quickies
-    public void toggleAutoplay() {
-        this.autoplayEnabled = !this.autoplayEnabled;
-        this.setChanged();
-        if (level != null && !level.isClientSide) {
-            level.sendBlockUpdated(this.worldPosition, getBlockState(), getBlockState(), 3);
-        }
-    }
-    public void toggleExclusion(int playlistIndex) {
-        DiscIdentity id = resolveIdentity(playlistIndex);
-        if (id == null) return;
-        if (excludedTracks.contains(id)) excludedTracks.remove(id); else excludedTracks.add(id);
-    }
+
     // used for moving playlist entry in queue, mainly for autoplay purposes
     public void moveInQueue(int playlistIndex, int direction) {
-        DiscIdentity id = resolveIdentity(playlistIndex);
+        DiscIdentity id = CtrlHelper.resolveIdentity(this,playlistIndex, true);
         if (id == null) return;
         int index = customQueueOrder.indexOf(id);
         if (index == -1) { customQueueOrder.add(id); index = customQueueOrder.size() - 1; }
@@ -558,7 +486,6 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         level.sendBlockUpdated(jukeboxPos,oldState,newState,3);
         PlaylistHelper.broadcastPlaylistUpdate(this);
     }
-
     public void stopAndReturnDisc() 
     {
         if (level == null || level.isClientSide) return;
@@ -586,7 +513,7 @@ public class AutoplayControllerBlockEntity extends BlockEntity
         while (attempts < fullPlaylist.size()) {
             nextIndex = (nextIndex + 1) % fullPlaylist.size();
             attempts++;
-            if (!isExcluded(nextIndex) && this.getCustomOrder(nextIndex) != startIndex)
+            if (!CtrlHelper.isExcluded(this,nextIndex) && CtrlHelper.getCustomOrder(this,nextIndex) != startIndex)
             {
                 tryPlayDisc(nextIndex);
                 return;

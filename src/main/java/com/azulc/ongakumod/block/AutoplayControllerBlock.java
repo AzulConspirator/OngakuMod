@@ -5,6 +5,7 @@ import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.container.AutoplayMenu;
 import com.azulc.ongakumod.item.TuningWrenchItem;
 import com.azulc.ongakumod.util.ControllerRegistry;
+import com.azulc.ongakumod.util.CtrlHelper;
 import com.azulc.ongakumod.util.PlaylistHelper;
 import com.azulc.ongakumod.network.TerminalControlHandler;
 import com.mojang.serialization.MapCodec;
@@ -108,7 +109,7 @@ public class AutoplayControllerBlock extends HorizontalDirectionalBlock implemen
             BlockEntity be = level.getBlockEntity(pos);
             if (be instanceof AutoplayControllerBlockEntity controller) 
             {
-                controller.StopJukebox();
+                CtrlHelper.StopJukebox(controller);
                 if (level.getServer() != null) 
                 {
                     for (ServerPlayer player : level.getServer().getPlayerList().getPlayers()) {

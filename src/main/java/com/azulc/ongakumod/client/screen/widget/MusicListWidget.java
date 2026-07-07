@@ -9,7 +9,7 @@ import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.OngakuModClient;
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
-import com.azulc.ongakumod.util.LinkHelper;
+import com.azulc.ongakumod.util.CtrlHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
 import com.azulc.ongakumod.util.UIHelper;
@@ -54,7 +54,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
     public void refreshList(List<ItemStack> discs)
     {
         this.clearEntries();
-        Map<Object, MusicEntry> ordered = new LinkedHashMap<>();
+        Map<DiscIdentity, MusicEntry> ordered = new LinkedHashMap<>();
 
         for (int i = 0; i < discs.size(); i++)
         {
@@ -62,19 +62,11 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             if (stack.isEmpty()) continue;
 
             DiscIdentity identity = DiscIdentityHelper.get(stack, BlockPos.ZERO, i);
-            boolean isEtched = LinkHelper.hasComponentByString(stack, "etched:music");
-
-            if (isEtched){
-                ordered.put(i, new MusicEntry(stack, i, 1, identity));
-            }
-            else{
-                MusicEntry existing = ordered.get(identity);
-                if (existing != null){
-                    ordered.put(identity, new MusicEntry(existing.disc, existing.index, existing.count + 1, identity));
-                }
-                else{
-                    ordered.put(identity, new MusicEntry(stack, i, 1, identity));
-                }
+            MusicEntry existing = ordered.get(identity);
+            if (existing != null) {
+                ordered.put(identity, new MusicEntry(existing.disc, existing.index, existing.count + 1, identity));
+            } else {
+                ordered.put(identity, new MusicEntry(stack, i, 1, identity));
             }
         }
 
@@ -141,7 +133,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int bgRight = x + SpriteWidth;
             int bgBottom = y + SpriteHeight;
  
-            boolean isExcluded = screen.getMenu().getBlockEntity().isExcluded(this.index);
+            boolean isExcluded = CtrlHelper.isExcluded(screen.getMenu().getBlockEntity(),this.index);
             boolean isSelected = MusicListWidget.this.getSelected() == this;
 
             int mainColor = isExcluded ? 0xFF666666 : 0xFFFFFFFF;

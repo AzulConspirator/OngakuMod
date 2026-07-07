@@ -5,6 +5,7 @@ import javax.annotation.Nullable;
 import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.blockentity.SpeakerBlockEntity;
+import com.azulc.ongakumod.util.CtrlHelper;
 import com.azulc.ongakumod.util.LinkHelper;
 import com.mojang.serialization.MapCodec;
 import net.minecraft.core.BlockPos;
@@ -95,7 +96,7 @@ public class SpeakerBlock extends HorizontalDirectionalBlock implements EntityBl
                 level.updateNeighbourForOutputSignal(pos, this);
                 BlockPos controllerPos = rack.getControllerPos();
                 if (controllerPos != null && level.getBlockEntity(controllerPos) instanceof AutoplayControllerBlockEntity controller) {
-                    controller.StopJukebox();
+                    CtrlHelper.StopJukebox(controller);
                     LinkHelper.broadcastToSpeakers(controller,false, null);
                     LinkHelper.removeLinkedSpeaker(controller,pos);             
                 }

@@ -84,7 +84,7 @@ public class JukeboxHelper
                 return;
             }
         }
-        var linkedRackPositions = Controller.getLinkedRackPositions();
+        var linkedRackPositions = CtrlHelper.getLinkedRackPositions(Controller);
         // 2. Emergency Search: Try to find ANY empty slot in ANY linked rack
         for (BlockPos rackPos : linkedRackPositions) {
             DiscRackBlockEntity rack = LinkHelper.getRack(Controller,rackPos);

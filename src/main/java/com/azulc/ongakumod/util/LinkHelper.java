@@ -42,7 +42,7 @@ public class LinkHelper {
             }
             // CASE 3: CONNECT - Establish the new link
             rack.setControllerPos(Controller.getBlockPos());
-            Controller.getLinkedRackPositions().add(rackPos);
+            CtrlHelper.getLinkedRackPositions(Controller).add(rackPos);
             // Finalize sync
             Controller.setChanged();
             Controller.getLevel().sendBlockUpdated(Controller.getBlockPos(), Controller.getBlockState(), Controller.getBlockState(), 3);
@@ -56,7 +56,7 @@ public class LinkHelper {
     public static void removeLinkedRack(AutoplayControllerBlockEntity Controller, BlockPos rackPos) 
     {
         // 1. Remove from Controller's memory
-        boolean removed = Controller.getLinkedRackPositions().remove(rackPos);
+        boolean removed =  CtrlHelper.getLinkedRackPositions(Controller).remove(rackPos);
         // 2. IMPORTANT: Clear the Rack's internal memory
         if (Controller.getLevel().getBlockEntity(rackPos) instanceof DiscRackBlockEntity rack) {
             // Only clear it if the rack actually thinks it belongs to THIS controller
@@ -68,10 +68,8 @@ public class LinkHelper {
         }
         // 3. Refresh playlist and sync
         if (removed) {
-            //PlaylistHelper.buildPlaylist(); 
             if (Controller.getLevel() != null && !Controller.getLevel().isClientSide) {
                 Controller.getLevel().sendBlockUpdated(Controller.getBlockPos(), Controller.getBlockState(), Controller.getBlockState(), 3);
-                //PlaylistHelper.broadcastPlaylistUpdate(); 
             }
             Controller.setChanged();
         }
@@ -79,7 +77,7 @@ public class LinkHelper {
 
     public static void clearLinkedRacks(AutoplayControllerBlockEntity Controller) 
     {
-        Controller.getLinkedRackPositions().clear();
+        CtrlHelper.getLinkedRackPositions(Controller).clear();
         Controller.setChanged();
     }
 
@@ -102,10 +100,10 @@ public class LinkHelper {
         if (Controller.getLevel() == null || Controller.getLevel().isClientSide) return false;
 
         // Stop music whenever a connection state changes (as requested)
-        Controller.StopJukebox(); 
-        if (Controller.getLinkedSpeakerPositions().contains(speakerPos)) 
+        CtrlHelper.StopJukebox(Controller); 
+        if (CtrlHelper.getLinkedSpeakerPositions(Controller).contains(speakerPos)) 
         {
-            Controller.getLinkedSpeakerPositions().remove(speakerPos);
+            CtrlHelper.getLinkedSpeakerPositions(Controller).remove(speakerPos);
             if (Controller.getLevel().getBlockEntity(speakerPos) instanceof SpeakerBlockEntity speaker) 
             {
                 speaker.setControllerPos(null);
@@ -114,7 +112,7 @@ public class LinkHelper {
             Controller.setChanged();
             return false;
         } else {
-            Controller.getLinkedSpeakerPositions().add(speakerPos);
+            CtrlHelper.getLinkedSpeakerPositions(Controller).add(speakerPos);
             if (Controller.getLevel().getBlockEntity(speakerPos) instanceof SpeakerBlockEntity speaker) {
                 speaker.setControllerPos(Controller.getBlockPos());
                 // Don't set playing to true yet; wait for the next song to start
@@ -125,7 +123,7 @@ public class LinkHelper {
     }
 
     public static void removeLinkedSpeaker(AutoplayControllerBlockEntity Controller,BlockPos speakerPos) {
-        boolean removed = Controller.getLinkedSpeakerPositions().remove(speakerPos);
+        boolean removed = CtrlHelper.getLinkedSpeakerPositions(Controller).remove(speakerPos);
         if (Controller.getLevel().getBlockEntity(speakerPos) instanceof SpeakerBlockEntity speaker) {
             if (Controller.getBlockPos().equals(speaker.getControllerPos())) {
                 speaker.setControllerPos(null);
@@ -142,7 +140,7 @@ public class LinkHelper {
     @SuppressWarnings("static-access")
     public static void broadcastToSpeakers(AutoplayControllerBlockEntity Controller, boolean isPlaying, @Nullable ItemStack disc) {
         Level level = Controller.getLevel();
-        var linkedSpeakers = Controller.getLinkedSpeakerPositions();
+        var linkedSpeakers = CtrlHelper.getLinkedSpeakerPositions(Controller);
             if (level == null || level.isClientSide) return;
         UUID NetID = Controller.getNetworkId(Controller);
         for (BlockPos speakerPos : linkedSpeakers) {

@@ -3,6 +3,7 @@ package com.azulc.ongakumod.network;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
 import com.azulc.ongakumod.container.TerminalMenu;
 import com.azulc.ongakumod.util.ControllerRegistry;
+import com.azulc.ongakumod.util.CtrlHelper;
 import com.azulc.ongakumod.util.ControllerRegistry.ControllerSnapshot;
 import com.azulc.ongakumod.util.PlaylistHelper;
 
@@ -19,12 +20,12 @@ public class ServerPayloadHandler {
             BlockPos pos = payload.pos().orElseThrow(() -> new IllegalArgumentException("PLAY requires a slot index"));
             if (level.getBlockEntity(pos) instanceof AutoplayControllerBlockEntity controller) {
                 switch (payload.action()) {
-                    case TOGGLE_AUTOPLAY -> controller.toggleAutoplay();
-                    case EXCLUDE -> controller.toggleExclusion(payload.slotIndex().orElseThrow(() -> new IllegalArgumentException("EXCLUDE requires a slot index")));
+                    case TOGGLE_AUTOPLAY -> CtrlHelper.toggleAutoplay(controller);
+                    case EXCLUDE -> CtrlHelper.toggleExclusion(controller,payload.slotIndex().orElseThrow(() -> new IllegalArgumentException("EXCLUDE requires a slot index")));
                     case MOVE_UP -> controller.moveInQueue(payload.slotIndex().orElseThrow(() -> new IllegalArgumentException("MOVE_UP requires a slot index")), -1);
                     case MOVE_DOWN -> controller.moveInQueue(payload.slotIndex().orElseThrow(() -> new IllegalArgumentException("MOVE_DOWN requires a slot index")), 1);
                     case SKIP -> controller.playNextInQueue();
-                    case STOP -> controller.StopJukebox();
+                    case STOP -> CtrlHelper.StopJukebox(controller);
                     case PLAY -> {    
                         int slot = payload.slotIndex().orElseThrow(() -> new IllegalArgumentException("PLAY requires a slot index"));
                         controller.tryPlayDisc(slot);

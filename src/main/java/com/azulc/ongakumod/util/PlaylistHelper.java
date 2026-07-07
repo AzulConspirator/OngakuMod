@@ -31,14 +31,21 @@ public class PlaylistHelper
         }
     }
 
-    public static List<PlaylistEntry> buildPlaylist(AutoplayControllerBlockEntity controller)
+    public static List<PlaylistEntry> buildPlaylist(AutoplayControllerBlockEntity controller) {
+    return buildPlaylist(controller, true);
+    }
+
+    public static List<PlaylistEntry> peekPlaylist(AutoplayControllerBlockEntity controller) {
+        return buildPlaylist(controller, false);
+    }
+
+    private static List<PlaylistEntry> buildPlaylist(AutoplayControllerBlockEntity controller, boolean reconcileQueue)
     {
         Level lvl = controller.getLevel();
         List<PlaylistEntry> playlist = new ArrayList<>();
         if (lvl == null) return playlist;
-        Set<BlockPos> linkedRackPositions = controller.getLinkedRackPositions();
-        List<DiscIdentity> customQueueOrder = controller.getCustomQueue();
-        // Keep insertion order stable so newly discovered discs append predictably.
+        Set<BlockPos> linkedRackPositions = CtrlHelper.getLinkedRackPositions(controller);
+        List<DiscIdentity> customQueueOrder = CtrlHelper.getCustomQueue(controller);
         List<DiscIdentity> physicalItemTypes = new ArrayList<>();
         // 1. Scan linked racks
         for (BlockPos rackPos : linkedRackPositions)
@@ -80,17 +87,20 @@ public class PlaylistHelper
             }
         }
         // 3. Keep queue order synced to what is physically present
-        boolean changed = false;
-        if (customQueueOrder.removeIf(identity -> !physicalItemTypes.contains(identity))) {changed = true; }
-        for (DiscIdentity identity : physicalItemTypes)
+        if (reconcileQueue) 
         {
-            if (!customQueueOrder.contains(identity))
+            boolean changed = false;
+            if (customQueueOrder.removeIf(identity -> !physicalItemTypes.contains(identity))) {changed = true; }
+            for (DiscIdentity identity : physicalItemTypes)
             {
-                customQueueOrder.add(identity);
-                changed = true;
+                if (!customQueueOrder.contains(identity))
+                {
+                    customQueueOrder.add(identity);
+                    changed = true;
+                }
             }
+            if (changed) { controller.setChanged();}
         }
-        if (changed) { controller.setChanged();}
         // 4. Sort by custom queue order first, then by rack position and slot
         playlist.sort((a, b) ->
         {
@@ -109,7 +119,6 @@ public class PlaylistHelper
         private static DiscIdentity get(ItemStack stack)
         {
             ResourceLocation item = BuiltInRegistries.ITEM.getKey(stack.getItem());
-            // Etched discs become unique by URL
             if (OngakuMod.IS_ETCHED_LOADED && LinkHelper.hasComponentByString(stack, "etched:music"))
             {
                 String url = EtchedBridge.getEtchedUrl(stack);

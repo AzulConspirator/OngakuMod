@@ -8,6 +8,7 @@ import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.OngakuModClient;
 import com.azulc.ongakumod.block.AutoplayControllerBlock;
 import com.azulc.ongakumod.blockentity.AutoplayControllerBlockEntity;
+import com.azulc.ongakumod.util.CtrlHelper;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
@@ -45,12 +46,12 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
         boolean holdingWrench = player.getMainHandItem().is(OngakuMod.TUNING_WRENCH.get()) || player.getOffhandItem().is(OngakuMod.TUNING_WRENCH.get());
         
         if (holdingWrench) {
-            for (BlockPos rackPos : controller.getLinkedRackPositions()) {
+            for (BlockPos rackPos : CtrlHelper.getLinkedRackPositions(controller)) {
                 poseStack.pushPose();
                 renderLineBetweenBlocks(controller.getBlockPos(), rackPos, poseStack, bufferSource, 0x00FFFF); // Cyan
                 poseStack.popPose();
             }
-            for (BlockPos SpeakerPos : controller.getLinkedSpeakerPositions()) {
+            for (BlockPos SpeakerPos : CtrlHelper.getLinkedSpeakerPositions(controller)) {
                 poseStack.pushPose();
                 renderLineBetweenBlocks(controller.getBlockPos(), SpeakerPos, poseStack, bufferSource, 0xBDFF7D); // Cyan
                 poseStack.popPose();
@@ -67,8 +68,8 @@ public class AutoplayControllerRenderer implements BlockEntityRenderer<AutoplayC
             case 2 -> 3; // track is loaded & playing
             default -> 0;
         };
-        long startTick = controller.getSongStartTick();
-        int duration = controller.getSongDurationTicks();
+        long startTick = CtrlHelper.getSongStartTick(controller);
+        int duration = CtrlHelper.getSongDurationTicks(controller);
         int progressFrame = 0;
 
         // Explicitly check if a song is actually supposed to be playing
