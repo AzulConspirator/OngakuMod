@@ -56,8 +56,11 @@ public class PlaylistHelper
                 for (int i = 0; i < rack.getContainerSize(); i++)
                 {
                     ItemStack stack = rack.getItem(i);
+                    if (stack.isEmpty() && controller.currentlyPlayingEntry != null && controller.currentlyPlayingEntry.rackPos().equals(rackPos) && controller.currentlyPlayingEntry.slotIndex() == i)
+                    {
+                        stack = controller.currentlyPlayingEntry.stack();
+                    }
                     if (stack.isEmpty()) continue;
-
                     playlist.add(new PlaylistEntry(rackPos, i, stack.copy()));
                     DiscIdentity id = DiscIdentityHelper.get(stack,rackPos,i);
                     if(!physicalItemTypes.contains(id))
@@ -68,12 +71,13 @@ public class PlaylistHelper
             }
         }
         // 2. Add the disc currently in the jukebox, if any
-        if (controller.currentlyPlayingEntry != null)
+        boolean playingAccountedFor = controller.currentlyPlayingEntry != null && playlist.stream().anyMatch(e -> e.rackPos().equals(controller.currentlyPlayingEntry.rackPos()) && e.slotIndex() == controller.currentlyPlayingEntry.slotIndex());
+        if (controller.currentlyPlayingEntry != null && !playingAccountedFor)
         {
             playlist.add(controller.currentlyPlayingEntry);
-            physicalItemTypes.add(DiscIdentityHelper.get(controller.currentlyPlayingEntry.stack(),controller.currentlyPlayingEntry.rackPos(),controller.currentlyPlayingEntry.slotIndex()));
+            physicalItemTypes.add(DiscIdentityHelper.get(controller.currentlyPlayingEntry.stack(),controller.currentlyPlayingEntry.rackPos(), controller.currentlyPlayingEntry.slotIndex()));
         }
-        else
+        else if (controller.currentlyPlayingEntry == null)
         {
             BlockPos jukeboxPos = JukeboxHelper.findJukebox(controller);
             if (jukeboxPos != null && lvl.getBlockEntity(jukeboxPos) instanceof JukeboxBlockEntity jukebox)
@@ -106,8 +110,9 @@ public class PlaylistHelper
         {
             int indexA = customQueueOrder.indexOf(DiscIdentityHelper.get(a.stack(), a.rackPos(), a.slotIndex()));
             int indexB = customQueueOrder.indexOf(DiscIdentityHelper.get(b.stack(), b.rackPos(), b.slotIndex()));
-
-            return Integer.compare(indexA,indexB);
+            if (indexA == -1) indexA = Integer.MAX_VALUE;
+            if (indexB == -1) indexB = Integer.MAX_VALUE;
+            return Integer.compare(indexA, indexB);
         });
         return playlist;
     }
