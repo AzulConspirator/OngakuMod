@@ -9,7 +9,6 @@ import com.azulc.ongakumod.OngakuMod;
 import com.azulc.ongakumod.OngakuModClient;
 import com.azulc.ongakumod.client.screen.AutoplayScreen;
 import com.azulc.ongakumod.network.ManagePlaylistPayload;
-import com.azulc.ongakumod.util.CtrlHelper;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentity;
 import com.azulc.ongakumod.util.PlaylistHelper.DiscIdentityHelper;
 import com.azulc.ongakumod.util.UIHelper;
@@ -133,7 +132,7 @@ public class MusicListWidget extends ObjectSelectionList<MusicListWidget.MusicEn
             int bgRight = x + SpriteWidth;
             int bgBottom = y + SpriteHeight;
  
-            boolean isExcluded = CtrlHelper.isExcluded(screen.getMenu().getBlockEntity(),this.index);
+            boolean isExcluded = screen.getMenu().getBlockEntity().excludedTracks.contains(this.identity);
             boolean isSelected = MusicListWidget.this.getSelected() == this;
 
             int mainColor = isExcluded ? 0xFF666666 : 0xFFFFFFFF;
