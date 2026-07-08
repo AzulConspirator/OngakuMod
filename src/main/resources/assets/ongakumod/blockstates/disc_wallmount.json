@@ -1,8 +1,16 @@
 {
   "variants": {
-    "facing=north": { "model": "ongakumod:block/disc_wallmount" },
-    "facing=south": { "model": "ongakumod:block/disc_wallmount", "y": 180 },
-    "facing=east": { "model": "ongakumod:block/disc_wallmount", "y": 90 },
-    "facing=west": { "model": "ongakumod:block/disc_wallmount", "y": 270 }
+    "facing=north,variant=0": { "model": "ongakumod:block/disc_wallmount" },
+    "facing=south,variant=0": { "model": "ongakumod:block/disc_wallmount", "y": 180 },
+    "facing=east,variant=0": { "model": "ongakumod:block/disc_wallmount", "y": 90 },
+    "facing=west,variant=0": { "model": "ongakumod:block/disc_wallmount", "y": 270 },
+    "facing=north,variant=1": { "model": "ongakumod:block/disc_wallmount" },
+    "facing=south,variant=1": { "model": "ongakumod:block/disc_wallmount", "y": 180 },
+    "facing=east,variant=1": { "model": "ongakumod:block/disc_wallmount", "y": 90 },
+    "facing=west,variant=1": { "model": "ongakumod:block/disc_wallmount", "y": 270 },
+    "facing=north,variant=2": { "model": "ongakumod:block/disc_wallmount" },
+    "facing=south,variant=2": { "model": "ongakumod:block/disc_wallmount", "y": 180 },
+    "facing=east,variant=2": { "model": "ongakumod:block/disc_wallmount", "y": 90 },
+    "facing=west,variant=2": { "model": "ongakumod:block/disc_wallmount", "y": 270 }
   }
 }

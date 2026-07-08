@@ -46,6 +46,7 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
         boolean isWall = block instanceof DiscRackWallBlock;
         boolean isBox = block instanceof DiscRackBoxBlock;
         Direction dir = rack.getBlockState().getValue(BlockStateProperties.HORIZONTAL_FACING);
+        int variant = rack.getBlockState().hasProperty(DiscRackWallBlock.VARIANT) ? rack.getBlockState().getValue(DiscRackWallBlock.VARIANT) : 0;
         BakedModel _Vinylmodel = blockRenderer.getBlockModelShaper().getModelManager().getModel(OngakuModClient.VinylModel);
         BakedModel _Sleevemodel = blockRenderer.getBlockModelShaper().getModelManager().getModel(OngakuModClient.SleeveModel);
 
@@ -62,21 +63,27 @@ public class DiscRackRenderer implements BlockEntityRenderer<DiscRackBlockEntity
             ItemStack stack = rack.getItem(0);
             if (!stack.isEmpty()) {
                 DiscColorCache.DiscColors colors = DiscColorCache.getColors(stack);
-                // load Sleeve
-                ms.pushPose();
-                ms.scale(scale, scale, scale);
-                ms.translate(-0.5, -0.35, -0.55);
-                //ms.mulPose(Axis.YP.rotationDegrees(180));
-                renderColoredModel(ms.last(), buffer, _Sleevemodel,true, colors, light, overlay,stack);
-                ms.popPose();
-                ms.pushPose();
-                // load Vinyl
-                ms.translate(0.45, -0.4, -0.35);
-                ms.mulPose(Axis.YP.rotationDegrees(180));
-                ms.mulPose(Axis.XP.rotationDegrees(5));
-                ms.scale(scale, scale, scale);
-                renderColoredModel(ms.last(), buffer, _Vinylmodel,false, colors, light, overlay,stack);
-                ms.popPose();
+                if (variant == 0 || variant == 1)
+                {
+                    // load Sleeve
+                    ms.pushPose();
+                    ms.scale(scale, scale, scale);
+                    ms.translate(-0.5, -0.35, -0.55);
+                    //ms.mulPose(Axis.YP.rotationDegrees(180));
+                    renderColoredModel(ms.last(), buffer, _Sleevemodel,true, colors, light, overlay,stack);
+                    ms.popPose();
+                }
+                if (variant == 0 || variant == 2)
+                {
+                    // load Vinyl
+                    ms.pushPose();
+                    ms.translate(0.45, -0.4, -0.35);
+                    ms.mulPose(Axis.YP.rotationDegrees(180));
+                    ms.mulPose(Axis.XP.rotationDegrees(5));
+                    ms.scale(scale, scale, scale);
+                    renderColoredModel(ms.last(), buffer, _Vinylmodel,false, colors, light, overlay,stack);
+                    ms.popPose();
+                }
             }
         }
         else if(isBox) 
